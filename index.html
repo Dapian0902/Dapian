@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trip Planner V29 (Auto Resume)</title>
+    <title>Trip Planner V30 (Ultimate)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
     
     <style>
@@ -33,7 +32,8 @@
         .route-connector { position: relative; }
         .route-connector::after { content: ''; position: absolute; top: 50%; right: -1rem; width: 1rem; height: 2px; background: #e5e7eb; transform: translateY(-50%); }
         .route-card:last-child .route-connector::after { display: none; }
-        #sync-status { transition: opacity 0.5s; }
+        
+        /* Modal */
         #trip-modal { transition: opacity 0.2s ease; }
         #trip-modal.hidden { opacity: 0; pointer-events: none; z-index: -1; }
         #trip-modal.flex { opacity: 1; pointer-events: auto; z-index: 100; }
@@ -49,25 +49,48 @@
                         <i data-lucide="map" class="w-5 h-5"></i>
                     </div>
                     <div class="flex flex-col">
-                        <span class="font-black text-xl tracking-tight text-gray-900 leading-none">Trip Planner</span>
-                        <div class="flex items-center gap-1 cursor-pointer hover:underline text-[10px] text-indigo-600 font-bold uppercase tracking-wider" onclick="openTripManager()">
-                            <span id="current-trip-name">Select Trip</span> <i data-lucide="chevron-down" class="w-3 h-3"></i>
+                        <span class="font-black text-xl tracking-tight text-gray-900 leading-none hidden md:block">Trip Planner</span>
+                        <div class="flex items-center gap-1 cursor-pointer hover:bg-gray-100 px-2 py-1 rounded transition-colors" onclick="openTripManager()">
+                            <span id="current-trip-name" class="text-sm font-bold text-indigo-700 truncate max-w-[150px]">Select Trip</span>
+                            <i data-lucide="chevron-down" class="w-4 h-4 text-indigo-400"></i>
                         </div>
                     </div>
                 </div>
                 
                 <div class="flex items-center space-x-1">
-                    <button onclick="openTripManager()" class="flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-sm font-bold transition-colors mr-2">
-                        <i data-lucide="folder-open" class="w-4 h-4"></i> <span class="hidden md:inline">My Trips</span>
-                    </button>
-                    <div class="h-6 w-px bg-gray-300 mx-1"></div>
-                    <button onclick="switchTab('summary')" id="btn-summary" class="tab-btn px-3 py-2 rounded-lg text-sm font-bold bg-gray-100 text-gray-700 flex items-center gap-2"><i data-lucide="layout-grid"></i> <span class="hidden md:inline">Dash</span></button>
-                    <button onclick="switchTab('journey')" id="btn-journey" class="tab-btn px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 flex items-center gap-2"><i data-lucide="book-open"></i> <span class="hidden md:inline">Journey</span></button>
-                    <button onclick="switchTab('planner')" id="btn-planner" class="tab-btn px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 flex items-center gap-2"><i data-lucide="edit-3"></i> <span class="hidden md:inline">Edit</span></button>
-                    <button onclick="switchTab('budget')" id="btn-budget" class="tab-btn px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 flex items-center gap-2"><i data-lucide="pie-chart"></i> <span class="hidden md:inline">Budget</span></button>
+                    <button onclick="switchTab('summary')" id="btn-summary" class="tab-btn px-3 py-2 rounded-lg text-sm font-bold bg-gray-100 text-gray-700 flex items-center gap-2"><i data-lucide="layout-grid" class="w-4 h-4"></i> <span class="hidden md:inline">Dash</span></button>
+                    <button onclick="switchTab('journey')" id="btn-journey" class="tab-btn px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 flex items-center gap-2"><i data-lucide="book-open" class="w-4 h-4"></i> <span class="hidden md:inline">Journey</span></button>
+                    <button onclick="switchTab('planner')" id="btn-planner" class="tab-btn px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 flex items-center gap-2"><i data-lucide="edit-3" class="w-4 h-4"></i> <span class="hidden md:inline">Edit</span></button>
+                    <button onclick="switchTab('budget')" id="btn-budget" class="tab-btn px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 flex items-center gap-2"><i data-lucide="pie-chart" class="w-4 h-4"></i> <span class="hidden md:inline">Budget</span></button>
+                    
                     <div class="w-px h-6 bg-gray-300 mx-2"></div>
-                    <button onclick="resetData()" class="p-2 text-gray-400 hover:text-red-600 transition-colors" title="Reset Data"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
-                    <button onclick="saveToFile()" class="p-2 text-gray-400 hover:text-indigo-600 transition-colors" title="Download JSON"><i data-lucide="download" class="w-5 h-5"></i></button>
+                    
+                    <div class="relative">
+                        <button id="btn-data-menu" onclick="toggleDataMenu()" class="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors focus:outline-none">
+                            <i data-lucide="more-vertical" class="w-5 h-5"></i>
+                        </button>
+                        <div id="data-dropdown" class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 hidden z-50 overflow-hidden ring-1 ring-black ring-opacity-5">
+                            <div class="px-4 py-3 bg-gray-50 border-b border-gray-100">
+                                <span class="text-xs font-bold text-gray-400 uppercase">Trip Actions</span>
+                            </div>
+                            <button onclick="renameTrip()" class="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 flex items-center gap-3 text-gray-700">
+                                <i data-lucide="edit-2" class="w-4 h-4 text-gray-400"></i> Rename Trip
+                            </button>
+                            <button onclick="saveCopy()" class="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 flex items-center gap-3 text-gray-700 border-b border-gray-100">
+                                <i data-lucide="copy" class="w-4 h-4 text-gray-400"></i> Save as Copy
+                            </button>
+                            
+                            <div class="px-4 py-2 bg-gray-50 border-b border-gray-100 mt-1">
+                                <span class="text-xs font-bold text-gray-400 uppercase">Data</span>
+                            </div>
+                            <button onclick="saveToFile()" class="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 flex items-center gap-3 text-gray-700">
+                                <i data-lucide="download" class="w-4 h-4 text-gray-400"></i> Export JSON
+                            </button>
+                            <button onclick="resetData()" class="w-full text-left px-4 py-3 text-sm hover:bg-red-50 flex items-center gap-3 text-red-600">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i> Reset Data
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -79,8 +102,8 @@
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6 mb-8">
                 <div class="bento-card md:col-span-2 p-6 bg-gradient-to-br from-indigo-600 to-blue-700 text-white flex flex-col justify-between relative overflow-hidden">
                     <div class="absolute right-[-20px] bottom-[-20px] opacity-10"><i data-lucide="plane" class="w-48 h-48"></i></div>
-                    <div><div class="text-indigo-200 font-bold uppercase text-xs tracking-wider mb-1">Current Plan</div><h2 class="text-3xl font-black leading-tight" id="sum-title">Ready?</h2></div>
-                    <div class="mt-8"><div class="text-5xl font-black mb-2" id="sum-dday">D-DAY</div><div class="text-indigo-100 font-medium" id="sum-dates">Set dates</div></div>
+                    <div><div class="text-indigo-200 font-bold uppercase text-xs tracking-wider mb-1">Current Plan</div><h2 class="text-3xl font-black leading-tight" id="sum-title">No Trip Selected</h2></div>
+                    <div class="mt-8"><div class="text-5xl font-black mb-2" id="sum-dday">-</div><div class="text-indigo-100 font-medium" id="sum-dates">Set schedule</div></div>
                 </div>
                 <div class="bento-card md:col-span-1 p-5 flex flex-col items-center justify-center">
                     <div class="text-xs font-bold text-gray-400 uppercase mb-2">Budget Health</div>
@@ -92,9 +115,9 @@
                     <div class="flex items-center gap-3"><div class="bg-orange-100 p-2 rounded-lg text-orange-600"><i data-lucide="home" class="w-5 h-5"></i></div><div><div class="text-2xl font-black text-gray-800" id="cnt-stay">0</div><div class="text-xs text-gray-400 font-bold uppercase">Stays</div></div></div>
                     <div class="flex items-center gap-3"><div class="bg-emerald-100 p-2 rounded-lg text-emerald-600"><i data-lucide="map" class="w-5 h-5"></i></div><div><div class="text-2xl font-black text-gray-800" id="cnt-activity">0</div><div class="text-xs text-gray-400 font-bold uppercase">Activities</div></div></div>
                 </div>
-                <div class="bento-card md:col-span-4 p-6 bg-gray-50">
+                <div class="bento-card md:col-span-4 p-6 bg-gray-50/50">
                     <div class="flex justify-between items-center mb-4"><div class="text-xs font-bold text-gray-400 uppercase">Travel Route</div><span class="text-xs text-indigo-500 font-bold bg-indigo-50 px-2 py-1 rounded">Timeline View</span></div>
-                    <div class="flex items-center gap-6 overflow-x-auto pb-4 pt-2" id="sum-route-flow"><span class="text-gray-400 italic text-sm w-full text-center py-4">Add flights or transport to see route.</span></div>
+                    <div class="flex items-center gap-6 overflow-x-auto pb-4 pt-2" id="sum-route-flow"><span class="text-gray-400 italic text-sm w-full text-center py-4">Add flights or transport to see route flow.</span></div>
                 </div>
             </div>
         </div>
@@ -196,12 +219,14 @@
                 <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2"><i data-lucide="folder-open" class="text-indigo-600"></i> My Trips</h2>
                 <button onclick="closeTripManager()" class="text-gray-400 hover:text-gray-600"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
+            
             <div class="mb-6">
                 <div class="text-xs font-bold text-gray-400 uppercase mb-2">Saved Trips (Cloud)</div>
                 <div id="trip-list" class="space-y-2 max-h-[300px] overflow-y-auto bg-gray-50 p-2 rounded-lg border border-gray-200">
                     <div class="text-center text-gray-400 py-4 text-sm">Initializing...</div>
                 </div>
             </div>
+            
             <div class="border-t pt-4 space-y-4">
                 <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Create New Trip</label>
@@ -239,7 +264,7 @@
         let currentTripId = null;
         let unsubscribe = null;
 
-        // Globals (Saved to localStorage for auto-resume)
+        // Globals
         let data = { tripName: "New Trip", totalBudget: 2000000, limits: {}, items: [], expenses: [] };
         let editingId = null;
         let activeFilter = 'all';
@@ -253,17 +278,7 @@
                 const app = firebase.initializeApp(firebaseConfig);
                 db = firebase.firestore();
                 console.log("Firebase Connected");
-                loadTripList(); 
-                
-                // Auto Resume Logic
-                const lastId = localStorage.getItem('lastTripId');
-                if(lastId) {
-                    // Try to load last trip
-                    loadTrip(lastId);
-                } else {
-                    // If no last trip, show manager
-                    openTripManager();
-                }
+                loadTripList(); // Load list immediately
             } catch (e) {
                 console.error(e);
                 document.getElementById('trip-list').innerHTML = `<div class="text-center text-red-400 py-4 text-sm">Firebase Error<br>Check Key</div>`;
@@ -279,6 +294,9 @@
 
             updateUI();
             lucide.createIcons();
+            
+            // Open Manager on start if connected
+            if(db) openTripManager();
         };
 
         // --- TRIP MANAGER ---
@@ -291,15 +309,25 @@
             document.getElementById('trip-modal').classList.add('hidden');
             document.getElementById('trip-modal').classList.remove('flex');
         }
+        function toggleDataMenu() {
+            const menu = document.getElementById('data-dropdown');
+            menu.classList.toggle('hidden');
+        }
+        window.onclick = function(event) {
+            if (!event.target.closest('#btn-data-menu') && !event.target.closest('#data-dropdown')) {
+                document.getElementById('data-dropdown').classList.add('hidden');
+            }
+        }
 
         function loadTripList() {
             if(!db) return;
             const listEl = document.getElementById('trip-list');
+            listEl.innerHTML = '<div class="text-center text-gray-400 py-4 text-sm">Loading...</div>';
             
             db.collection("trips").get().then((querySnapshot) => {
                 listEl.innerHTML = '';
                 if (querySnapshot.empty) {
-                    listEl.innerHTML = '<div class="text-center text-gray-400 py-4 text-sm">No trips found. Create one!</div>';
+                    listEl.innerHTML = '<div class="text-center text-gray-400 py-4 text-sm">No trips yet. Create one!</div>';
                     return;
                 }
                 querySnapshot.forEach((doc) => {
@@ -336,12 +364,8 @@
 
         function loadTrip(id, name) {
             currentTripId = id;
-            localStorage.setItem('lastTripId', id); // Remember this trip
-            
-            if (name) {
-                document.getElementById('current-trip-name').innerText = name;
-                document.getElementById('sum-title').innerText = name;
-            }
+            document.getElementById('current-trip-name').innerText = name || "Current Trip";
+            document.getElementById('sum-title').innerText = name || "My Trip";
             
             if (unsubscribe) unsubscribe();
             
@@ -351,18 +375,36 @@
                     data = { ...data, ...cloudData };
                     if(!data.limits) data.limits = {};
                     CATEGORIES.forEach(c => { if(data.limits[c]===undefined) data.limits[c]=0; });
-                    
-                    // Update Name if loaded from auto-resume
-                    document.getElementById('current-trip-name').innerText = data.tripName || "My Trip";
-                    document.getElementById('sum-title').innerText = data.tripName || "My Trip";
-                    
                     updateUI();
-                } else {
-                    // Trip deleted?
-                    localStorage.removeItem('lastTripId');
                 }
             });
             closeTripManager();
+        }
+
+        // --- RENAME & COPY ---
+        function renameTrip() {
+            if(!currentTripId) return alert("No trip selected");
+            const newName = prompt("Enter new name:", data.tripName);
+            if(newName && newName !== data.tripName) {
+                data.tripName = newName;
+                document.getElementById('current-trip-name').innerText = newName;
+                document.getElementById('sum-title').innerText = newName;
+                save();
+            }
+        }
+
+        function saveCopy() {
+            if(!db || !currentTripId) return alert("No trip to copy");
+            const newName = prompt("Enter name for the copy:", data.tripName + " (Copy)");
+            if(!newName) return;
+            
+            const newId = 'trip_' + Date.now();
+            const copyData = { ...data, tripName: newName };
+            
+            db.collection("trips").doc(newId).set(copyData).then(() => {
+                loadTrip(newId, newName);
+                alert("Trip copied successfully!");
+            }).catch(() => { alert("Copy failed"); });
         }
 
         // --- DATA OPS ---
@@ -370,6 +412,7 @@
             if(db && currentTripId) {
                 data.tripName = document.getElementById('current-trip-name').innerText;
                 db.collection("trips").doc(currentTripId).set(data).catch(e => console.error(e));
+                loadTripList(); // Refresh list to show updates if name changed
             }
         }
 
@@ -412,7 +455,7 @@
 
         function updateUI() { renderJourney(); renderEditList(); renderSmartBudget(); renderSummary(); }
 
-        // --- UI & LOGIC ---
+        // --- UI & LOGIC (Identical to V22/V28) ---
         function switchTab(t) {
             document.querySelectorAll('.tab-content').forEach(e => e.classList.remove('active'));
             document.getElementById('tab-'+t).classList.add('active');
@@ -514,8 +557,10 @@
         function renderSummary() {
             const dates = data.items.map(i => i.startDate).sort();
             document.getElementById('sum-dates').innerText = dates.length ? `${dates[0]} ~ ${dates[dates.length-1]}` : 'Set dates';
+            document.getElementById('sum-title').innerText = data.tripName || "My Trip";
             if(dates.length) {
-                const diff = Math.ceil((new Date(dates[0]) - new Date()) / (86400000));
+                const start = new Date(dates[0]); const today = new Date();
+                const diff = Math.ceil((start - today) / (1000*60*60*24));
                 document.getElementById('sum-dday').innerText = diff > 0 ? `D-${diff}` : (diff===0 ? 'D-Day' : `Day ${Math.abs(diff)+1}`);
             }
             const cnts = {activity:0, flight:0, stay:0};
