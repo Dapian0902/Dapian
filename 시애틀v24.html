@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trip Planner V24 (Pro + Firebase)</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Filter Buttons */
+        .filter-btn.active { color: white; border-color: transparent; }
+        .filter-btn { transition: all 0.2s; }
+        #fil-all.active { background-color: #374151; }
+        #fil-activity.active { background-color: #4f46e5; }
+        #fil-flight.active { background-color: #2563eb; }
+        #fil-transport.active { background-color: #059669; }
+        #fil-stay.active { background-color: #ea580c; }
+        
+        /* Scrollbar */
+        .table-scroll::-webkit-scrollbar { height: 6px; }
+        .table-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+        /* V22 Bento Grid Design */
+        .bento-card { background: white; border-radius: 1.5rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05); border: 1px solid #f3f4f6; transition: transform 0.2s; }
+        .bento-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); }
+        
+        /* Route Flow Style */
+        .route-connector { position: relative; }
+        .route-connector::after { content: ''; position: absolute; top: 50%; right: -1rem; width: 1rem; height: 2px; background: #e5e7eb; transform: translateY(-50%); }
+        .route-card:last-child .route-connector::after { display: none; }
+        
+        /* Sync Status */
+        #sync-status { transition: opacity 0.5s; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 antialiased min-h-screen flex flex-col">
+
+    <nav class="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center gap-2">
+                    <div class="bg-gradient-to-br from-indigo-600 to-violet-600 p-1.5 rounded-lg text-white shadow-lg">
+                        <i data-lucide="cloud" class="w-5 h-5"></i>
+                    </div>
+                    <span class="font-black text-xl tracking-tight text-gray-900 hidden md:block">Trip Planner <span class="text-xs text-indigo-500 font-normal">PRO LIVE</span></span>
+                </div>
+                
+                <div id="sync-status" class="hidden md:flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 text-xs rounded-full font-bold border border-green-200">
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    Online
+                </div>
+
+                <div class="flex items-center space-x-1">
+                    <button onclick="switchTab('summary')" id="btn-summary" class="tab-btn px-3 py-2 rounded-lg text-sm font-bold bg-indigo-50 text-indigo-700 flex items-center gap-2">
+                        <i data-lucide="layout-grid"></i> <span class="hidden md:inline">Dashboard</span>
+                    </button>
+                    <button onclick="switchTab('journey')" id="btn-journey" class="tab-btn px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 flex items-center gap-2">
+                        <i data-lucide="book-open"></i> <span class="hidden md:inline">Journey</span>
+                    </button>
+                    <button onclick="switchTab('planner')" id="btn-planner" class="tab-btn px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 flex items-center gap-2">
+                        <i data-lucide="edit-3"></i> <span class="hidden md:inline">Edit</span>
+                    </button>
+                    <button onclick="switchTab('budget')" id="btn-budget" class="tab-btn px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 flex items-center gap-2">
+                        <i data-lucide="pie-chart"></i> <span class="hidden md:inline">Budget</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main id="tab-summary" class="tab-content active w-full flex-grow p-4 md:p-8">
+        <div class="max-w-6xl mx-auto">
+            <h1 class="text-3xl font-black text-gray-900 mb-6">Trip Overview</h1>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6 mb-8">
+                <div class="bento-card md:col-span-2 p-6 bg-gradient-to-br from-indigo-600 to-blue-700 text-white flex flex-col justify-between relative overflow-hidden">
+                    <div class="absolute right-[-20px] bottom-[-20px] opacity-10"><i data-lucide="plane" class="w-48 h-48"></i></div>
+                    <div>
+                        <div class="text-indigo-200 font-bold uppercase text-xs tracking-wider mb-1">Your Trip</div>
+                        <h2 class="text-3xl font-black leading-tight" id="sum-title">Ready for Adventure?</h2>
+                    </div>
+                    <div class="mt-8">
+                        <div class="text-5xl font-black mb-2" id="sum-dday">D-DAY</div>
+                        <div class="text-indigo-100 font-medium" id="sum-dates">No dates set</div>
+                    </div>
+                </div>
+                <div class="bento-card md:col-span-1 p-5 flex flex-col items-center justify-center">
+                    <div class="text-xs font-bold text-gray-400 uppercase mb-2">Budget Health</div>
+                    <div class="relative w-32 h-32">
+                        <canvas id="sumChartBudget"></canvas>
+                        <div class="absolute inset-0 flex items-center justify-center flex-col">
+                            <span class="text-xs text-gray-400">Remaining</span>
+                            <span class="font-bold text-gray-800" id="sum-remain-pct">0%</span>
+                        </div>
+                    </div>
+                    <div class="mt-3 text-center">
+                        <div class="text-xs text-gray-400">Total Spent</div>
+                        <div class="font-bold text-indigo-600" id="sum-spent-total">0</div>
+                    </div>
+                </div>
+                <div class="bento-card md:col-span-1 p-5 flex flex-col justify-center gap-4">
+                    <div class="flex items-center gap-3"><div class="bg-blue-100 p-2 rounded-lg text-blue-600"><i data-lucide="plane" class="w-5 h-5"></i></div><div><div class="text-2xl font-black text-gray-800" id="cnt-flight">0</div><div class="text-xs text-gray-400 font-bold uppercase">Flights</div></div></div>
+                    <div class="flex items-center gap-3"><div class="bg-orange-100 p-2 rounded-lg text-orange-600"><i data-lucide="home" class="w-5 h-5"></i></div><div><div class="text-2xl font-black text-gray-800" id="cnt-stay">0</div><div class="text-xs text-gray-400 font-bold uppercase">Stays</div></div></div>
+                    <div class="flex items-center gap-3"><div class="bg-emerald-100 p-2 rounded-lg text-emerald-600"><i data-lucide="map" class="w-5 h-5"></i></div><div><div class="text-2xl font-black text-gray-800" id="cnt-activity">0</div><div class="text-xs text-gray-400 font-bold uppercase">Activities</div></div></div>
+                </div>
+                <div class="bento-card md:col-span-4 p-6 bg-gray-50/50">
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="text-xs font-bold text-gray-400 uppercase">Travel Route</div>
+                        <span class="text-xs text-indigo-500 font-bold bg-indigo-50 px-2 py-1 rounded">Timeline View</span>
+                    </div>
+                    <div class="flex items-center gap-6 overflow-x-auto pb-4 pt-2" id="sum-route-flow">
+                        <span class="text-gray-400 italic text-sm w-full text-center py-4">Add flights or transport to visualize your route.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <main id="tab-journey" class="tab-content w-full flex-grow p-4 md:p-8 bg-white">
+        <div class="max-w-2xl mx-auto">
+            <div class="flex flex-wrap justify-center gap-2 mb-8 sticky top-20 z-40 bg-white/90 backdrop-blur p-2 rounded-full border border-gray-200 shadow-sm w-fit mx-auto">
+                <button onclick="toggleFilter('all')" id="fil-all" class="filter-btn active px-4 py-1.5 rounded-full text-xs font-bold border border-gray-200 bg-gray-50 text-gray-500">All</button>
+                <button onclick="toggleFilter('activity')" id="fil-activity" class="filter-btn px-4 py-1.5 rounded-full text-xs font-bold border border-gray-200 bg-white text-gray-500 hover:text-indigo-600">Activity</button>
+                <button onclick="toggleFilter('flight')" id="fil-flight" class="filter-btn px-4 py-1.5 rounded-full text-xs font-bold border border-gray-200 bg-white text-gray-500 hover:text-blue-600">Flight</button>
+                <button onclick="toggleFilter('transport')" id="fil-transport" class="filter-btn px-4 py-1.5 rounded-full text-xs font-bold border border-gray-200 bg-white text-gray-500 hover:text-emerald-600">Transport</button>
+                <button onclick="toggleFilter('stay')" id="fil-stay" class="filter-btn px-4 py-1.5 rounded-full text-xs font-bold border border-gray-200 bg-white text-gray-500 hover:text-orange-600">Stay</button>
+            </div>
+            <div id="timeline-feed" class="space-y-12 pb-20"></div>
+            <div id="journey-empty" class="text-center py-20 hidden"><p class="text-gray-400">Loading schedule...</p></div>
+        </div>
+    </main>
+
+    <main id="tab-planner" class="tab-content w-full flex-grow p-4 md:p-8 bg-gray-50">
+        <div class="max-w-2xl mx-auto space-y-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
+                    <h3 class="font-bold text-gray-800 text-lg flex items-center gap-2"><i data-lucide="plus-circle" class="text-indigo-600"></i> <span id="edit-form-title">Add Schedule</span></h3>
+                    <div class="flex bg-gray-100 rounded-lg p-1 overflow-x-auto">
+                        <button onclick="setType('activity')" id="type-activity" class="px-3 py-1.5 text-xs font-bold rounded-md bg-white shadow text-indigo-600 transition-all whitespace-nowrap">Activity</button>
+                        <button onclick="setType('flight')" id="type-flight" class="px-3 py-1.5 text-xs font-bold rounded-md text-gray-500 hover:text-gray-900 transition-all whitespace-nowrap">Flight</button>
+                        <button onclick="setType('transport')" id="type-transport" class="px-3 py-1.5 text-xs font-bold rounded-md text-gray-500 hover:text-gray-900 transition-all whitespace-nowrap">Transport</button>
+                        <button onclick="setType('stay')" id="type-stay" class="px-3 py-1.5 text-xs font-bold rounded-md text-gray-500 hover:text-gray-900 transition-all whitespace-nowrap">Stay</button>
+                    </div>
+                </div>
+                <div class="space-y-4">
+                    <div class="flex gap-3">
+                        <select id="in-icon" class="w-24 p-3 border border-gray-200 rounded-xl text-2xl bg-gray-50 text-center outline-none">
+                            <option value="📍">📍</option><option value="📷">📷</option><option value="🍔">🍔</option><option value="☕">☕</option><option value="🛍️">🛍️</option><option value="✈️">✈️</option><option value="🚆">🚆</option><option value="🚌">🚌</option><option value="🚗">🚗</option><option value="🏨">🏨</option><option value="🏠">🏠</option>
+                        </select>
+                        <input id="in-name" type="text" placeholder="Place Name / Title" class="flex-grow p-3 border border-gray-200 rounded-xl bg-gray-50 outline-none font-medium">
+                        <div id="route-inputs" class="flex-grow flex gap-2 hidden">
+                            <input id="in-from" type="text" placeholder="From" class="w-1/2 p-3 border border-gray-200 rounded-xl bg-gray-50 outline-none font-medium">
+                            <div class="flex items-center text-gray-400">➜</div>
+                            <input id="in-to" type="text" placeholder="To" class="w-1/2 p-3 border border-gray-200 rounded-xl bg-gray-50 outline-none font-medium">
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                        <div class="grid grid-cols-2 gap-4 mb-3">
+                            <div><label class="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Start Date</label><input id="in-start-date" type="date" class="w-full p-2 border border-gray-200 rounded-lg text-sm outline-none bg-white"></div>
+                            <div><label class="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Start Time</label><input id="in-start-time" type="time" class="w-full p-2 border border-gray-200 rounded-lg text-sm outline-none bg-white"></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="block text-[10px] font-bold text-gray-400 mb-1 uppercase">End Date</label><input id="in-end-date" type="date" class="w-full p-2 border border-gray-200 rounded-lg text-sm outline-none bg-white"></div>
+                            <div><label class="block text-[10px] font-bold text-gray-400 mb-1 uppercase">End Time</label><input id="in-end-time" type="time" class="w-full p-2 border border-gray-200 rounded-lg text-sm outline-none bg-white"></div>
+                        </div>
+                    </div>
+                    <div><input id="in-link" type="text" placeholder="Google Map Link (URL)" class="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 outline-none text-sm text-blue-600"></div>
+                    <div><input id="in-note" type="text" placeholder="Note / Memo" class="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 outline-none text-sm"></div>
+                    
+                    <button onclick="addItem()" id="btn-add-item" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all">Add to Plan</button>
+                    <button onclick="cancelEdit()" id="btn-cancel-edit" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-600 py-3.5 rounded-xl font-bold hidden">Cancel Edit</button>
+                </div>
+            </div>
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="bg-gray-50 px-6 py-3 border-b border-gray-100 flex justify-between items-center"><span class="font-bold text-gray-600 text-sm">Item List</span></div>
+                <div id="edit-list" class="divide-y divide-gray-50"></div>
+            </div>
+        </div>
+    </main>
+
+    <main id="tab-budget" class="tab-content w-full flex-grow p-4 md:p-8 bg-gray-50">
+        <div class="max-w-4xl mx-auto space-y-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <h3 class="font-bold text-gray-800 text-lg mb-4 flex items-center gap-2"><i data-lucide="calculator" class="w-5 h-5 text-indigo-600"></i> Smart Budget</h3>
+                <div class="mb-6 bg-indigo-50 p-4 rounded-xl border border-indigo-100 flex items-center justify-between">
+                    <div><label class="block text-xs font-bold text-indigo-500 uppercase mb-1">Total Budget</label><div class="flex items-center gap-2"><span class="text-xl font-bold text-indigo-700">₩</span><input type="number" id="smart-total" class="bg-transparent text-2xl font-black text-indigo-900 outline-none w-40 border-b border-indigo-300 focus:border-indigo-600" value="0" onchange="updateAllFromTotal()"></div></div>
+                    <div class="text-right"><div class="text-xs font-bold text-gray-500 uppercase mb-1">Total Spent</div><div class="text-xl font-bold text-rose-500">₩ <span id="smart-spent">0</span></div></div>
+                </div>
+                <div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-xs text-gray-400 border-b border-gray-100"><th class="text-left py-2">Category</th><th class="text-left py-2 w-20">% Set</th><th class="text-left py-2 w-28">Limit (₩)</th><th class="text-right py-2 w-24">Spent</th></tr></thead><tbody id="smart-budget-rows" class="divide-y divide-gray-50"></tbody></table></div>
+            </div>
+            <section class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                <h4 class="font-bold text-gray-800 mb-4 text-sm flex items-center gap-2"><i data-lucide="credit-card" class="w-4 h-4 text-gray-500"></i> Add Transaction</h4>
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
+                    <div class="md:col-span-3"><label class="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Category</label><select id="exp-cat" class="w-full p-2 border rounded-lg text-sm bg-gray-50"></select></div>
+                    <div class="md:col-span-3"><label class="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Date</label><input id="exp-date" type="date" class="w-full p-2 border rounded-lg text-sm"></div>
+                    <div class="md:col-span-6"><label class="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Item</label><input id="exp-item" type="text" placeholder="e.g. Starbucks" class="w-full p-2 border rounded-lg text-sm"></div>
+                    <div class="md:col-span-3"><label class="block text-[10px] font-bold text-gray-400 mb-1 uppercase text-indigo-600">Cost (KRW)</label><input id="exp-cost" type="number" placeholder="0" class="w-full p-2 border border-indigo-200 rounded-lg text-sm font-bold text-right text-indigo-700 bg-indigo-50"></div>
+                    <div class="md:col-span-3"><label class="block text-[10px] font-bold text-gray-400 mb-1 uppercase">USD ($)</label><input id="exp-usd" type="number" placeholder="0" class="w-full p-2 border rounded-lg text-sm text-right"></div>
+                    <div class="md:col-span-3"><label class="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Payer</label><input id="exp-payer" type="text" placeholder="e.g. Me" class="w-full p-2 border rounded-lg text-sm"></div>
+                    <div class="md:col-span-3"><label class="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Method</label><select id="exp-method" class="w-full p-2 border rounded-lg text-sm bg-white"><option>Credit Card</option><option>Cash</option><option>Other</option></select></div>
+                    <div class="md:col-span-9"><label class="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Note</label><input id="exp-note" type="text" placeholder="..." class="w-full p-2 border rounded-lg text-sm"></div>
+                    <div class="md:col-span-3 flex items-end"><button onclick="addExpense()" class="w-full bg-indigo-600 text-white py-2 rounded-lg font-bold hover:bg-indigo-700 shadow-md transition-all">Add</button></div>
+                </div>
+            </section>
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="bg-gray-50 px-5 py-3 border-b border-gray-100 flex justify-between items-center"><span class="font-bold text-gray-600 text-sm">Expense Log</span><button onclick="downloadCSV()" class="flex items-center gap-1 text-xs font-bold bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700 transition-colors"><i data-lucide="sheet" class="w-3 h-3"></i> CSV</button></div>
+                <div class="overflow-x-auto table-scroll"><table class="w-full text-sm min-w-[800px]"><thead class="bg-gray-50 text-gray-500 font-bold text-xs uppercase border-b border-gray-100"><tr><th class="py-3 px-4 text-left">Date</th><th class="py-3 px-4 text-left">Cat</th><th class="py-3 px-4 text-left w-1/4">Item</th><th class="py-3 px-4 text-right">KRW</th><th class="py-3 px-4 text-right">USD</th><th class="py-3 px-4 text-left">Payer</th><th class="py-3 px-4 text-left">Method</th><th class="py-3 px-4 text-left w-1/5">Note</th><th class="py-3 px-2 text-center">Del</th></tr></thead><tbody id="expense-list" class="divide-y divide-gray-50"></tbody></table></div>
+            </div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // ==========================================
+        // const app = initializeApp(firebaseConfig);
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abcdef"
+        };
+        // ==========================================
+
+        let app, db;
+        const TRIP_ID = "my_trip_data_v1";
+
+        try {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            console.log("Firebase Init Success");
+        } catch (e) {
+            console.error("Firebase Init Failed", e);
+        }
+
+        // GLOBALS
+        window.data = { totalBudget: 2000000, limits: {}, items: [], expenses: [] };
+        window.editingId = null;
+        window.activeFilter = 'all';
+        window.currentType = 'activity';
+        window.chartBudget = null;
+        const CATEGORIES = ['Food', 'Transport', 'Stay', 'Flight', 'Shopping', 'Activity', 'Other'];
+
+        // --- INIT ---
+        window.init = function() {
+            const today = new Date().toISOString().split('T')[0];
+            const dInput = document.getElementById('in-start-date'); if(dInput) dInput.value=today;
+            const eInput = document.getElementById('exp-date'); if(eInput) eInput.value=today;
+            const catSel = document.getElementById('exp-cat'); if(catSel) { catSel.innerHTML = ''; CATEGORIES.forEach(c => catSel.innerHTML += `<option value="${c}">${c}</option>`); }
+
+            if(db) {
+                onSnapshot(doc(db, "trips", TRIP_ID), (doc) => {
+                    if (doc.exists()) {
+                        const cloudData = doc.data();
+                        window.data = { ...window.data, ...cloudData };
+                        if(!window.data.limits) window.data.limits = {};
+                        CATEGORIES.forEach(c => { if(window.data.limits[c]===undefined) window.data.limits[c]=0; });
+                        window.updateUI();
+                    }
+                });
+            } else { alert("Firebase 키를 설정해주세요."); }
+        };
+
+        window.save = async function() {
+            if(db) {
+                try { await setDoc(doc(db, "trips", TRIP_ID), window.data); window.updateUI(); } 
+                catch(e) { console.error(e); alert("저장 실패. 파이어베이스 설정을 확인하세요."); }
+            }
+        };
+
+        window.updateUI = function() {
+            window.renderJourney();
+            window.renderEditList();
+            window.renderSmartBudget();
+            window.renderSummary();
+        };
+
+        // --- UI FUNCS ---
+        window.switchTab = function(t) {
+            document.querySelectorAll('.tab-content').forEach(e => e.classList.remove('active'));
+            document.getElementById('tab-'+t).classList.add('active');
+            document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('bg-indigo-50', 'text-indigo-700'); b.classList.add('text-gray-600'); });
+            document.getElementById('btn-'+t).classList.remove('text-gray-600'); document.getElementById('btn-'+t).classList.add('bg-indigo-50', 'text-indigo-700');
+            if(t==='summary') window.renderSummary();
+        };
+        window.toggleFilter = function(f) {
+            window.activeFilter = f;
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('fil-'+f).classList.add('active');
+            window.renderJourney();
+        };
+        window.calcDuration = function(d1,t1,d2,t2){if(!d1||!t1||!d2||!t2)return null;const s=new Date(`${d1}T${t1}`),e=new Date(`${d2}T${t2}`),diff=e-s;if(diff<=0)return null;const h=Math.floor(diff/36e5),m=Math.floor((diff%36e5)/6e4);return h>0?`${h}h ${m}m`:`${m}m`;};
+
+        // --- JOURNEY RENDERER (ICON FIXED) ---
+        window.renderJourney = function() {
+            const c=document.getElementById('timeline-feed');c.innerHTML='';
+            if(!window.data.items.length){document.getElementById('journey-empty').classList.remove('hidden');return;}
+            document.getElementById('journey-empty').classList.add('hidden');
+            const dates=new Set();window.data.items.forEach(i=>{dates.add(i.startDate);if(i.endDate){let cur=new Date(i.startDate),end=new Date(i.endDate);while(cur<=end){dates.add(cur.toISOString().split('T')[0]);cur.setDate(cur.getDate()+1)}}});
+            Array.from(dates).sort().forEach(d=>{
+                const day=new Date(d).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+                const card=document.createElement('div');card.className="relative pl-8";
+                card.innerHTML=`<div class="absolute left-[15px] top-1 w-3 h-3 bg-gray-800 rounded-full border-2 border-gray-50 z-10"></div><div class="absolute left-[20px] top-4 bottom-[-48px] w-0.5 bg-gray-200"></div><h3 class="text-xl font-black text-gray-800 mb-4">${day}</h3>`;
+                const stays=window.data.items.filter(i=>i.type==='stay'&&i.startDate<=d&&i.endDate>=d);
+                if(stays.length&&(window.activeFilter==='all'||window.activeFilter==='stay')){stays.forEach(s=>{card.innerHTML+=`<div class="bg-orange-50 border border-orange-100 rounded-xl p-4 mb-6 flex justify-between shadow-sm"><div class="flex gap-3"><div class="text-2xl mt-1">${s.icon}</div><div><div class="text-xs font-bold text-orange-600 uppercase">Stay</div><div class="font-bold text-gray-800 text-lg">${s.name}</div></div></div>${s.link?`<a href="${s.link}" target="_blank" class="p-2 text-orange-500"><i data-lucide="map" class="w-4 h-4"></i></a>`:''}</div>`});}
+                let evs=window.data.items.filter(i=>(i.type!=='stay')&&i.startDate===d);
+                if(window.activeFilter!=='all')evs=evs.filter(i=>i.type===window.activeFilter);
+                evs.sort((a,b)=>(a.startTime||'').localeCompare(b.startTime||''));
+                const con=document.createElement('div');con.className="space-y-4";
+                evs.forEach(e=>{
+                    const dur=window.calcDuration(e.startDate,e.startTime,e.endDate,e.endTime), badge=dur?`<span class="ml-2 text-[10px] bg-gray-800 text-white px-1.5 py-0.5 rounded-full">${dur}</span>`:'';
+                    const isLog=e.type==='flight'||e.type==='transport';
+                    const col=e.type==='flight'?'blue':(e.type==='transport'?'emerald':'indigo');
+                    const title=isLog?`${e.from} ✈️ ${e.to}`:`${e.icon} ${e.name}`;
+                    let timeD = e.startTime||''; if(e.endTime) timeD += ` ➔ ${e.endTime}`;
+                    // FIX: Use user selected icon for background
+                    const bgIcon = e.icon; 
+                    con.innerHTML+=`<div class="bg-white border-l-4 border-${col}-500 rounded-r-xl shadow-sm p-4 hover:shadow-md transition-shadow group relative overflow-hidden"><div class="flex justify-between items-start z-10 relative"><div class="w-full"><div class="flex items-center gap-2 mb-2"><span class="font-mono text-xs font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded flex items-center">${timeD} ${badge}</span><span class="text-xs font-bold text-${col}-500 uppercase">${e.type}</span></div><div class="font-bold text-gray-800 text-lg flex items-center gap-2">${title}</div>${e.note?`<div class="text-xs text-gray-500 mt-1">${e.note}</div>`:''}</div><div class="flex items-center gap-1">${e.link?`<a href="${e.link}" target="_blank" class="p-1 text-gray-400 hover:text-indigo-600"><i data-lucide="map" class="w-4 h-4"></i></a>`:''}<button onclick="editItem(${e.id})" class="text-gray-300 hover:text-blue-500 p-1"><i data-lucide="pencil" class="w-4 h-4"></i></button><button onclick="deleteItem(${e.id})" class="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 p-1"><i data-lucide="x" class="w-4 h-4"></i></button></div></div>${isLog ? `<div class="absolute right-[-10px] bottom-[-10px] text-9xl text-${col}-50 opacity-10 pointer-events-none grayscale">${bgIcon}</div>` : ''}</div>`;
+                });
+                if(evs.length>0)card.appendChild(con);
+                if(evs.length>0||(stays.length>0&&(window.activeFilter==='all'||window.activeFilter==='stay')))c.appendChild(card);
+            });
+            lucide.createIcons();
+        };
+
+        // --- EDIT PLAN (Common) ---
+        window.clearInputs = function() {
+            document.getElementById('in-name').value = ''; document.getElementById('in-from').value = ''; document.getElementById('in-to').value = '';
+            document.getElementById('in-link').value = ''; document.getElementById('in-note').value = '';
+            document.getElementById('in-start-time').value = ''; document.getElementById('in-end-time').value = '';
+            window.editingId = null;
+            document.getElementById('btn-add-item').innerText = "Add to Plan";
+            document.getElementById('btn-cancel-edit').classList.add('hidden');
+            document.getElementById('edit-form-title').innerText = "Add Schedule";
+        };
+
+        window.setType = function(t){
+            window.currentType=t;
+            ['activity','flight','transport','stay'].forEach(x=>{const b=document.getElementById('type-'+x);if(x===t){b.className="px-3 py-1.5 text-xs font-bold rounded-md bg-white shadow text-indigo-600 transition-all whitespace-nowrap";if(t==='flight')b.classList.add('text-blue-600');if(t==='transport')b.classList.add('text-emerald-600');if(t==='stay')b.classList.add('text-orange-600');}else b.className="px-3 py-1.5 text-xs font-bold rounded-md text-gray-500 hover:text-gray-900 transition-all whitespace-nowrap"});
+            const i=document.getElementById('in-icon'),n=document.getElementById('in-name'),r=document.getElementById('route-inputs');
+            if(t==='flight'||t==='transport'){i.value=t==='flight'?'✈️':'🚆';n.classList.add('hidden');r.classList.remove('hidden');r.classList.add('flex')}else{i.value=t==='stay'?'🏨':'📍';n.classList.remove('hidden');r.classList.remove('flex');r.classList.add('hidden');} 
+            window.clearInputs();
+        };
+
+        window.addItem = function() {
+            const d = document.getElementById('in-start-date').value; let n = document.getElementById('in-name').value, f = document.getElementById('in-from').value, to = document.getElementById('in-to').value;
+            if((window.currentType==='flight'||window.currentType==='transport')&&(!f||!to)) return alert('Route needed');
+            if(window.currentType!=='flight'&&window.currentType!=='transport'&&!n) return alert('Name needed');
+            if(!d) return alert('Date needed');
+            const item = { 
+                id: window.editingId ? window.editingId : Date.now(), 
+                type: window.currentType, 
+                icon: document.getElementById('in-icon').value, 
+                name: n||`${f} ✈️ ${to}`, from: f, to: to, 
+                link: document.getElementById('in-link').value, 
+                startDate: d, startTime: document.getElementById('in-start-time').value, 
+                endDate: document.getElementById('in-end-date').value||d, endTime: document.getElementById('in-end-time').value, 
+                note: document.getElementById('in-note').value 
+            };
+            if(window.editingId) {
+                const idx = window.data.items.findIndex(i => i.id === window.editingId);
+                if(idx !== -1) window.data.items[idx] = item;
+            } else {
+                window.data.items.push(item);
+            }
+            window.save(); window.clearInputs();
+        };
+
+        window.editItem = function(id) {
+            const item = window.data.items.find(i => i.id === id); if(!item) return;
+            window.switchTab('planner'); window.setType(item.type);
+            document.getElementById('in-icon').value = item.icon; document.getElementById('in-name').value = item.name; document.getElementById('in-from').value = item.from || ''; document.getElementById('in-to').value = item.to || ''; document.getElementById('in-link').value = item.link || ''; document.getElementById('in-note').value = item.note || ''; document.getElementById('in-start-date').value = item.startDate; document.getElementById('in-start-time').value = item.startTime || ''; document.getElementById('in-end-date').value = item.endDate || item.startDate; document.getElementById('in-end-time').value = item.endTime || '';
+            window.editingId = id; 
+            document.getElementById('btn-add-item').innerText = "Update Plan"; 
+            document.getElementById('edit-form-title').innerText = "Edit Schedule"; 
+            document.getElementById('btn-cancel-edit').classList.remove('hidden');
+        };
+
+        window.cancelEdit = function() { window.clearInputs(); };
+        window.deleteItem = function(id) { if(confirm('Delete?')) { window.data.items = window.data.items.filter(i=>i.id!==id); window.save(); } };
+        
+        window.renderEditList = function(){
+            document.getElementById('edit-list').innerHTML = window.data.items.sort((a,b)=>a.startDate.localeCompare(b.startDate)).map(i => { const title = (i.from && i.to) ? `${i.from} ✈️ ${i.to}` : i.name; return `<div class="p-4 hover:bg-gray-50 flex items-center gap-3"><div class="text-xl w-8 text-center">${i.icon}</div><div class="flex-grow"><div class="font-bold text-gray-800 text-sm">${title}</div><div class="text-xs text-gray-500">${i.startDate} ${i.startTime||''}</div></div><button onclick="editItem(${i.id})" class="text-gray-300 hover:text-blue-500 p-2"><i data-lucide="pencil" class="w-4 h-4"></i></button><button onclick="deleteItem(${i.id})" class="text-gray-300 hover:text-red-500 p-2"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>`; }).join(''); lucide.createIcons();
+        };
+
+        // --- BUDGET ---
+        window.updateAllFromTotal = function() { window.data.totalBudget = parseInt(document.getElementById('smart-total').value)||0; window.save(); };
+        window.updateLimitFromPercent = function(c,v){window.data.limits[c]=Math.round(window.data.totalBudget*(parseFloat(v)||0)/100);window.save();};
+        window.updatePercentFromLimit = function(c,v){window.data.limits[c]=parseInt(v)||0;window.save();};
+        window.renderSmartBudget = function(){
+            document.getElementById('smart-total').value=window.data.totalBudget;let t=0;const s={};window.data.expenses.forEach(e=>{s[e.cat]=(s[e.cat]||0)+e.cost;t+=e.cost});document.getElementById('smart-spent').innerText=t.toLocaleString();const tb=document.getElementById('smart-budget-rows');tb.innerHTML='';CATEGORIES.forEach(c=>{const l=window.data.limits[c]||0,p=window.data.totalBudget>0?((l/window.data.totalBudget)*100).toFixed(1):0,sp=s[c]||0,ov=sp>l&&l>0;tb.innerHTML+=`<tr class="border-b border-gray-50"><td class="py-3 font-medium text-gray-700">${c}</td><td class="py-3"><div class="flex gap-1"><input type="number" class="w-12 p-1 border rounded text-right text-xs" value="${p}" onchange="updateLimitFromPercent('${c}',this.value)"><span class="text-xs text-gray-400">%</span></div></td><td class="py-3"><input type="number" class="w-24 p-1 border rounded text-right text-xs font-bold" value="${l}" onchange="updatePercentFromLimit('${c}',this.value)"></td><td class="py-3 text-right text-xs font-bold ${ov?'text-rose-500':'text-gray-500'}">${sp.toLocaleString()}</td></tr>`});document.getElementById('expense-list').innerHTML=window.data.expenses.sort((a,b)=>b.id-a.id).map(e=>`<tr class="hover:bg-gray-50 border-b border-gray-50"><td class="py-3 px-4 text-gray-500 whitespace-nowrap">${e.date}</td><td class="py-3 px-4"><span class="px-2 py-1 bg-gray-100 rounded text-xs text-gray-600 font-bold">${e.cat}</span></td><td class="py-3 px-4 font-bold text-gray-800">${e.name}</td><td class="py-3 px-4 text-right font-mono text-gray-700">₩${e.cost.toLocaleString()}</td><td class="py-3 px-4 text-right font-mono text-gray-500">${e.usd?'$'+e.usd:'-'}</td><td class="py-3 px-4 text-gray-600">${e.payer||'-'}</td><td class="py-3 px-4 text-gray-600">${e.method||'-'}</td><td class="py-3 px-4 text-gray-400 text-xs italic truncate max-w-[150px]">${e.note||''}</td><td class="py-3 px-2 text-center"><button onclick="deleteExpense(${e.id})" class="text-gray-300 hover:text-red-500"><i data-lucide="x" class="w-4 h-4"></i></button></td></tr>`).join('');
+        };
+        window.addExpense = function(){const i={id:Date.now(),cat:document.getElementById('exp-cat').value,name:document.getElementById('exp-item').value,date:document.getElementById('exp-date').value,cost:parseInt(document.getElementById('exp-cost').value),usd:parseFloat(document.getElementById('exp-usd').value),payer:document.getElementById('exp-payer').value,method:document.getElementById('exp-method').value,note:document.getElementById('exp-note').value};if(!i.name||!i.cost)return;window.data.expenses.push(i);document.getElementById('exp-item').value='';document.getElementById('exp-cost').value='';window.save();};
+        window.deleteExpense = function(id){window.data.expenses=window.data.expenses.filter(e=>e.id!==id);window.save();};
+        window.downloadCSV = function(){let c='\uFEFFCategory,Date,Item,KRW,USD,Payer,Method,Note\n';window.data.expenses.forEach(e=>{c+=`"${e.cat}","${e.date}","${e.name}",${e.cost},${e.usd||0},"${e.payer||''}","${e.method||''}","${e.note||''}"\n`});const b=new Blob([c],{type:'text/csv;charset=utf-8;'});const l=document.createElement("a");l.href=URL.createObjectURL(b);l.download="trip_expenses.csv";document.body.appendChild(l);l.click();document.body.removeChild(l);}
+
+        // --- DASHBOARD (Route Visual Enhanced) ---
+        window.renderSummary = function() {
+            const dates = window.data.items.map(i => i.startDate).sort();
+            const dateStr = dates.length ? `${dates[0]} ~ ${dates[dates.length-1]}` : 'Set dates';
+            document.getElementById('sum-dates').innerText = dateStr;
+            if(dates.length) {
+                const start = new Date(dates[0]); const today = new Date();
+                const diff = Math.ceil((start - today) / (1000*60*60*24));
+                document.getElementById('sum-dday').innerText = diff > 0 ? `D-${diff}` : (diff===0 ? 'D-Day' : `Day ${Math.abs(diff)+1}`);
+            }
+            const cnts = {activity:0, flight:0, stay:0};
+            window.data.items.forEach(i=>{ if(cnts[i.type]!==undefined) cnts[i.type]++; });
+            document.getElementById('cnt-flight').innerText = cnts.flight;
+            document.getElementById('cnt-stay').innerText = cnts.stay;
+            document.getElementById('cnt-activity').innerText = cnts.activity;
+
+            const totalSpent = window.data.expenses.reduce((a,c)=>a+c.cost,0);
+            document.getElementById('sum-spent-total').innerText = totalSpent.toLocaleString();
+            const pct = window.data.totalBudget > 0 ? Math.round(((window.data.totalBudget-totalSpent)/window.data.totalBudget)*100) : 0;
+            document.getElementById('sum-remain-pct').innerText = pct + '%';
+
+            const ctx = document.getElementById('sumChartBudget').getContext('2d');
+            if(window.chartBudget) window.chartBudget.destroy();
+            window.chartBudget = new Chart(ctx, {
+                type: 'doughnut',
+                data: { labels: ['Spent', 'Remaining'], datasets: [{ data: [totalSpent, Math.max(0, window.data.totalBudget-totalSpent)], backgroundColor: ['#e5e7eb', '#4f46e5'], borderWidth:0 }] },
+                options: { cutout: '75%', plugins: { legend: {display:false}, tooltip: {enabled:false} } }
+            });
+
+            // Route Flow Visualization (Enhanced)
+            const routeBox = document.getElementById('sum-route-flow');
+            routeBox.innerHTML = '';
+            const routes = window.data.items.filter(i => (i.type==='flight'||i.type==='transport') && i.from && i.to).sort((a,b)=>a.startDate.localeCompare(b.startDate));
+            if(routes.length) {
+                routes.forEach((r, idx) => {
+                    routeBox.innerHTML += `
+                    <div class="route-card flex-shrink-0 flex items-center gap-2">
+                        <div class="flex flex-col items-center min-w-[80px]">
+                            <span class="text-xs font-bold text-gray-400 mb-1">FROM</span>
+                            <span class="font-bold text-gray-800 text-sm bg-white border border-gray-200 px-3 py-1 rounded-lg shadow-sm whitespace-nowrap">${r.from}</span>
+                        </div>
+                        <div class="route-connector flex flex-col items-center w-16">
+                            <span class="text-2xl mb-1">${r.icon}</span>
+                            <div class="w-full h-0.5 bg-dashed bg-gray-300"></div>
+                        </div>
+                        <div class="flex flex-col items-center min-w-[80px]">
+                            <span class="text-xs font-bold text-gray-400 mb-1">TO</span>
+                            <span class="font-bold text-gray-800 text-sm bg-white border border-gray-200 px-3 py-1 rounded-lg shadow-sm whitespace-nowrap">${r.to}</span>
+                        </div>
+                    </div>`;
+                });
+            } else { routeBox.innerHTML = '<span class="text-sm text-gray-400 italic w-full text-center">Add flights or transport to see your route.</span>'; }
+        };
+
+        window.onload = init;
+    </script>
+</body>
+</html>
