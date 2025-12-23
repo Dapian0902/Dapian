@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Trip Planner v0.30 (Mobile Optimized)</title>
+    <title>Trip Planner v0.33 (Day Slider)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -19,7 +19,7 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
         .filter-btn.active { color: white; border-color: transparent; }
-        .filter-btn { transition: all 0.2s; white-space: nowrap; } /* 줄바꿈 방지 */
+        .filter-btn { transition: all 0.2s; white-space: nowrap; }
         #fil-all.active { background-color: #374151; }
         #fil-activity.active { background-color: #4f46e5; }
         #fil-flight.active { background-color: #2563eb; }
@@ -28,22 +28,20 @@
         
         .table-scroll::-webkit-scrollbar { height: 6px; }
         .table-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        
-        /* 모바일 가로 스크롤 숨기기 (깔끔하게) */
         .hide-scroll::-webkit-scrollbar { display: none; }
         .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
 
         .bento-card { background: white; border-radius: 1.5rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05); border: 1px solid #f3f4f6; }
-        .route-connector { position: relative; }
-        .route-connector::after { content: ''; position: absolute; top: 50%; right: -1rem; width: 1rem; height: 2px; background: #e5e7eb; transform: translateY(-50%); }
-        .route-card:last-child .route-connector::after { display: none; }
         
-        /* Modal */
+        /* New Timeline Slider Styles */
+        .day-card { min-width: 100px; scroll-snap-align: center; position: relative; }
+        .day-connector { position: absolute; top: 50%; left: 100%; width: 24px; height: 2px; background: #e5e7eb; transform: translateY(-50%); z-index: 0; }
+        .day-card:last-child .day-connector { display: none; }
+
         #trip-modal { transition: opacity 0.2s ease; }
         #trip-modal.hidden { opacity: 0; pointer-events: none; z-index: -1; }
         #trip-modal.flex { opacity: 1; pointer-events: auto; z-index: 100; }
 
-        /* Mobile Input Fix: iOS에서 입력창 확대 방지 */
         @media screen and (max-width: 768px) {
             input, select, textarea { font-size: 16px !important; }
         }
@@ -53,7 +51,8 @@
 
     <nav class="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
         <div class="max-w-7xl mx-auto px-2 md:px-4">
-            <div class="flex justify-between h-14 md:h-16"> <div class="flex items-center gap-2 md:gap-3">
+            <div class="flex justify-between h-14 md:h-16">
+                <div class="flex items-center gap-2 md:gap-3">
                     <div class="bg-gradient-to-br from-indigo-600 to-violet-600 p-1.5 rounded-lg text-white shadow-lg flex-shrink-0">
                         <i data-lucide="map" class="w-5 h-5"></i>
                     </div>
@@ -148,9 +147,15 @@
                     </div>
                 </div>
                 
-                <div class="bento-card md:col-span-4 p-4 md:p-6 bg-gray-50/50">
-                    <div class="flex justify-between items-center mb-4"><div class="text-xs font-bold text-gray-400 uppercase">Travel Route</div><span class="text-xs text-indigo-500 font-bold bg-indigo-50 px-2 py-1 rounded">Timeline View</span></div>
-                    <div class="flex items-center gap-6 overflow-x-auto pb-4 pt-2 touch-pan-x" id="sum-route-flow"><span class="text-gray-400 italic text-sm w-full text-center py-4">Add flights or transport to see route flow.</span></div>
+                <div class="bento-card md:col-span-4 p-5 md:p-6 bg-white">
+                    <div class="flex justify-between items-center mb-6">
+                        <div class="text-xs font-bold text-gray-400 uppercase flex items-center gap-2"><i data-lucide="milestone" class="w-4 h-4"></i> Day by Day</div>
+                        <div class="text-xs text-gray-300">Scroll ➜</div>
+                    </div>
+                    
+                    <div class="flex items-center gap-6 overflow-x-auto pb-6 pt-2 touch-pan-x snap-x" id="sum-day-slider">
+                        <span class="text-gray-400 italic text-sm w-full text-center py-4">Add your schedule to see the daily flow.</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -192,7 +197,6 @@
                             <input id="in-from" type="text" placeholder="From" class="w-1/2 p-2 md:p-3 border border-gray-200 rounded-xl bg-gray-50 outline-none font-medium"><div class="flex items-center text-gray-400">➜</div><input id="in-to" type="text" placeholder="To" class="w-1/2 p-2 md:p-3 border border-gray-200 rounded-xl bg-gray-50 outline-none font-medium">
                         </div>
                     </div>
-                    
                     <div class="bg-gray-50 p-3 md:p-4 rounded-xl border border-gray-100">
                         <div class="grid grid-cols-2 md:grid-cols-2 gap-3 mb-3">
                             <div><label class="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Start Date</label><input id="in-start-date" type="date" class="w-full p-2 border border-gray-200 rounded-lg text-sm outline-none bg-white"></div>
@@ -203,10 +207,8 @@
                             <div><label class="block text-[10px] font-bold text-gray-400 mb-1 uppercase">End Time</label><input id="in-end-time" type="time" class="w-full p-2 border border-gray-200 rounded-lg text-sm outline-none bg-white"></div>
                         </div>
                     </div>
-                    
                     <div><input id="in-link" type="text" placeholder="Google Map Link (URL)" class="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 outline-none text-sm text-blue-600"></div>
                     <div><input id="in-note" type="text" placeholder="Note / Memo" class="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 outline-none text-sm"></div>
-                    
                     <button onclick="addItem()" id="btn-add-item" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all">Add to Plan</button>
                     <button onclick="cancelEdit()" id="btn-cancel-edit" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-600 py-3.5 rounded-xl font-bold hidden">Cancel Edit</button>
                 </div>
@@ -223,13 +225,23 @@
             <div class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100">
                 <h3 class="font-bold text-gray-800 text-lg mb-4 flex items-center gap-2"><i data-lucide="calculator" class="w-5 h-5 text-indigo-600"></i> Smart Budget</h3>
                 <div class="mb-6 bg-indigo-50 p-4 rounded-xl border border-indigo-100 flex items-center justify-between">
-                    <div><label class="block text-xs font-bold text-indigo-500 uppercase mb-1">Total Budget</label><div class="flex items-center gap-2"><span class="text-xl font-bold text-indigo-700">₩</span><input type="number" id="smart-total" class="bg-transparent text-2xl font-black text-indigo-900 outline-none w-32 md:w-40 border-b border-indigo-300 focus:border-indigo-600" value="0" onchange="updateAllFromTotal()"></div></div>
+                    <div>
+                        <label class="block text-xs font-bold text-indigo-500 uppercase mb-1">Total Budget</label>
+                        <div class="flex items-center gap-2"><span class="text-xl font-bold text-indigo-700">₩</span><input type="number" id="smart-total" class="bg-transparent text-2xl font-black text-indigo-900 outline-none w-32 md:w-40 border-b border-indigo-300 focus:border-indigo-600" value="0" onchange="updateAllFromTotal()"></div>
+                        <div id="limit-sum-display" class="text-xs text-gray-400 mt-1">Allocated: 0</div>
+                    </div>
                     <div class="text-right"><div class="text-xs font-bold text-gray-500 uppercase mb-1">Total Spent</div><div class="text-xl font-bold text-rose-500">₩ <span id="smart-spent">0</span></div></div>
                 </div>
-                <div class="overflow-x-auto table-scroll"><table class="w-full text-sm min-w-[350px]"><thead><tr class="text-xs text-gray-400 border-b border-gray-100"><th class="text-left py-2">Category</th><th class="text-left py-2 w-20">% Set</th><th class="text-left py-2 w-28">Limit (₩)</th><th class="text-right py-2 w-24">Spent</th></tr></thead><tbody id="smart-budget-rows" class="divide-y divide-gray-50"></tbody></table></div>
+                
+                <div id="smart-budget-cards" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    </div>
             </div>
+            
             <section class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-gray-100">
-                <h4 class="font-bold text-gray-800 mb-4 text-sm flex items-center gap-2"><i data-lucide="credit-card" class="w-4 h-4 text-gray-500"></i> Add Transaction</h4>
+                <div class="flex justify-between items-center mb-4">
+                    <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2"><i data-lucide="credit-card" class="w-4 h-4 text-gray-500"></i> Transaction</h4>
+                    <button onclick="cancelEditExpense()" id="btn-cancel-exp" class="text-xs text-gray-500 underline hidden">Cancel Edit</button>
+                </div>
                 <div class="grid grid-cols-2 md:grid-cols-12 gap-3">
                     <div class="col-span-1 md:col-span-3"><label class="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Category</label><select id="exp-cat" class="w-full p-2 border rounded-lg text-sm bg-gray-50"></select></div>
                     <div class="col-span-1 md:col-span-3"><label class="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Date</label><input id="exp-date" type="date" class="w-full p-2 border rounded-lg text-sm"></div>
@@ -239,12 +251,13 @@
                     <div class="col-span-1 md:col-span-3"><label class="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Payer</label><input id="exp-payer" type="text" placeholder="e.g. Me" class="w-full p-2 border rounded-lg text-sm"></div>
                     <div class="col-span-1 md:col-span-3"><label class="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Method</label><select id="exp-method" class="w-full p-2 border rounded-lg text-sm bg-white"><option>Credit Card</option><option>Cash</option><option>Other</option></select></div>
                     <div class="col-span-2 md:col-span-9"><label class="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Note</label><input id="exp-note" type="text" placeholder="..." class="w-full p-2 border rounded-lg text-sm"></div>
-                    <div class="col-span-2 md:col-span-3 flex items-end"><button onclick="addExpense()" class="w-full bg-indigo-600 text-white py-2 rounded-lg font-bold hover:bg-indigo-700 shadow-md transition-all">Add</button></div>
+                    <div class="col-span-2 md:col-span-3 flex items-end"><button onclick="addExpense()" id="btn-add-exp" class="w-full bg-indigo-600 text-white py-2 rounded-lg font-bold hover:bg-indigo-700 shadow-md transition-all">Add</button></div>
                 </div>
             </section>
+            
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div class="bg-gray-50 px-5 py-3 border-b border-gray-100 flex justify-between items-center"><span class="font-bold text-gray-600 text-sm">Expense Log</span><button onclick="downloadCSV()" class="flex items-center gap-1 text-xs font-bold bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700 transition-colors"><i data-lucide="sheet" class="w-3 h-3"></i> CSV</button></div>
-                <div class="overflow-x-auto table-scroll"><table class="w-full text-sm min-w-[800px]"><thead class="bg-gray-50 text-gray-500 font-bold text-xs uppercase border-b border-gray-100"><tr><th class="py-3 px-4 text-left">Date</th><th class="py-3 px-4 text-left">Cat</th><th class="py-3 px-4 text-left w-1/4">Item</th><th class="py-3 px-4 text-right">KRW</th><th class="py-3 px-4 text-right">USD</th><th class="py-3 px-4 text-left">Payer</th><th class="py-3 px-4 text-left">Method</th><th class="py-3 px-4 text-left w-1/5">Note</th><th class="py-3 px-2 text-center">Del</th></tr></thead><tbody id="expense-list" class="divide-y divide-gray-50"></tbody></table></div>
+                <div class="overflow-x-auto table-scroll"><table class="w-full text-sm min-w-[800px]"><thead class="bg-gray-50 text-gray-500 font-bold text-xs uppercase border-b border-gray-100"><tr><th class="py-3 px-4 text-left">Date</th><th class="py-3 px-4 text-left">Cat</th><th class="py-3 px-4 text-left w-1/4">Item</th><th class="py-3 px-4 text-right">KRW</th><th class="py-3 px-4 text-right">USD</th><th class="py-3 px-4 text-left">Payer</th><th class="py-3 px-4 text-left">Method</th><th class="py-3 px-4 text-left w-1/5">Note</th><th class="py-3 px-2 text-center" colspan="2">Actions</th></tr></thead><tbody id="expense-list" class="divide-y divide-gray-50"></tbody></table></div>
             </div>
         </div>
     </main>
@@ -255,14 +268,12 @@
                 <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2"><i data-lucide="folder-open" class="text-indigo-600"></i> My Trips</h2>
                 <button onclick="closeTripManager()" class="text-gray-400 hover:text-gray-600"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
-            
             <div class="mb-4 flex-grow overflow-y-auto">
                 <div class="text-xs font-bold text-gray-400 uppercase mb-2">Saved Trips (Cloud)</div>
                 <div id="trip-list" class="space-y-2 bg-gray-50 p-2 rounded-lg border border-gray-200">
                     <div class="text-center text-gray-400 py-4 text-sm">Initializing...</div>
                 </div>
             </div>
-            
             <div class="border-t pt-4 space-y-4 flex-shrink-0">
                 <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Create New Trip</label>
@@ -283,9 +294,6 @@
     </div>
 
     <script>
-        // ==========================================
-        // const app = initializeApp(firebaseConfig);
-        // ==========================================
         const firebaseConfig = {
             apiKey: "AIzaSyD9d204Dz2ALB8nRZdSw8gn4R7uCAndKK8",
             authDomain: "mytrip-ef669.firebaseapp.com",
@@ -294,27 +302,25 @@
             messagingSenderId: "123456789",
             appId: "1:123456789:web:abcdef"
         };
-        // ==========================================
 
         let db = null;
         let currentTripId = null;
         let unsubscribe = null;
 
-        // Globals
         let data = { tripName: "New Trip", totalBudget: 2000000, limits: {}, items: [], expenses: [] };
         let editingId = null;
+        let editingExpenseId = null;
         let activeFilter = 'all';
         let currentType = 'activity';
         let chartBudget = null;
         const CATEGORIES = ['Food', 'Transport', 'Stay', 'Flight', 'Shopping', 'Activity', 'Other'];
-
-        // --- INIT ---
+        
         window.onload = function() {
             try {
                 const app = firebase.initializeApp(firebaseConfig);
                 db = firebase.firestore();
                 console.log("Firebase Connected");
-                loadTripList(); // Load list immediately
+                loadTripList();
             } catch (e) {
                 console.error(e);
                 document.getElementById('trip-list').innerHTML = `<div class="text-center text-red-400 py-4 text-sm">Firebase Error<br>Check Key</div>`;
@@ -331,84 +337,41 @@
             updateUI();
             lucide.createIcons();
             
-            // Open Manager on start if connected
             if(db) openTripManager();
         };
 
         // --- TRIP MANAGER ---
-        function openTripManager() {
-            document.getElementById('trip-modal').classList.remove('hidden');
-            document.getElementById('trip-modal').classList.add('flex');
-            loadTripList();
-        }
-        function closeTripManager() {
-            document.getElementById('trip-modal').classList.add('hidden');
-            document.getElementById('trip-modal').classList.remove('flex');
-        }
-        function toggleDataMenu() {
-            const menu = document.getElementById('data-dropdown');
-            menu.classList.toggle('hidden');
-        }
-        window.onclick = function(event) {
-            if (!event.target.closest('#btn-data-menu') && !event.target.closest('#data-dropdown')) {
-                document.getElementById('data-dropdown').classList.add('hidden');
-            }
-        }
+        function openTripManager() { document.getElementById('trip-modal').classList.remove('hidden'); document.getElementById('trip-modal').classList.add('flex'); loadTripList(); }
+        function closeTripManager() { document.getElementById('trip-modal').classList.add('hidden'); document.getElementById('trip-modal').classList.remove('flex'); }
+        function toggleDataMenu() { document.getElementById('data-dropdown').classList.toggle('hidden'); }
+        window.onclick = function(event) { if (!event.target.closest('#btn-data-menu') && !event.target.closest('#data-dropdown')) { document.getElementById('data-dropdown').classList.add('hidden'); } }
 
         function loadTripList() {
             if(!db) return;
             const listEl = document.getElementById('trip-list');
             listEl.innerHTML = '<div class="text-center text-gray-400 py-4 text-sm">Loading...</div>';
-            
             db.collection("trips").get().then((querySnapshot) => {
                 listEl.innerHTML = '';
-                if (querySnapshot.empty) {
-                    listEl.innerHTML = '<div class="text-center text-gray-400 py-4 text-sm">No trips yet. Create one!</div>';
-                    return;
-                }
+                if (querySnapshot.empty) { listEl.innerHTML = '<div class="text-center text-gray-400 py-4 text-sm">No trips. Create one!</div>'; return; }
                 querySnapshot.forEach((doc) => {
                     const t = doc.data();
-                    const id = doc.id;
-                    const isActive = id === currentTripId ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:bg-gray-50';
-                    const div = document.createElement('div');
-                    div.className = `p-3 rounded-lg border cursor-pointer flex justify-between items-center transition-all ${isActive}`;
-                    div.innerHTML = `<span class="font-bold text-gray-800 text-sm">${t.tripName || 'Untitled'}</span><button class="bg-white border border-gray-200 text-indigo-600 px-3 py-1 rounded text-xs font-bold hover:bg-indigo-600 hover:text-white transition-colors">LOAD</button>`;
-                    div.onclick = () => loadTrip(id, t.tripName);
-                    listEl.appendChild(div);
+                    const isActive = doc.id === currentTripId ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:bg-gray-50';
+                    listEl.innerHTML += `<div onclick="loadTrip('${doc.id}', '${t.tripName}')" class="p-3 rounded-lg border cursor-pointer flex justify-between items-center transition-all ${isActive}"><span class="font-bold text-gray-800 text-sm">${t.tripName||'Untitled'}</span><button class="bg-white border border-gray-200 text-indigo-600 px-3 py-1 rounded text-xs font-bold hover:bg-indigo-600 hover:text-white transition-colors">LOAD</button></div>`;
                 });
-            }).catch((error) => {
-                console.error(error);
-                listEl.innerHTML = '<div class="text-center text-red-400 text-sm">Error loading list.</div>';
             });
         }
-
         function createNewTrip() {
-            if(!db) return alert("Firebase not connected");
             const name = document.getElementById('new-trip-name').value;
             if(!name) return alert("Enter Trip Name");
-            
             const newId = 'trip_' + Date.now();
-            const newData = { tripName: name, totalBudget: 2000000, limits: {}, items: [], expenses: [] };
-            
-            db.collection("trips").doc(newId).set(newData).then(() => {
-                document.getElementById('new-trip-name').value = '';
-                loadTrip(newId, name);
-            }).catch((error) => {
-                alert("Create Failed");
-            });
+            db.collection("trips").doc(newId).set({ tripName: name, totalBudget: 2000000, limits: {}, items: [], expenses: [] }).then(() => { document.getElementById('new-trip-name').value = ''; loadTrip(newId, name); });
         }
-
         function loadTrip(id, name) {
             currentTripId = id;
-            document.getElementById('current-trip-name').innerText = name || "Current Trip";
-            document.getElementById('sum-title').innerText = name || "My Trip";
-            
             if (unsubscribe) unsubscribe();
-            
             unsubscribe = db.collection("trips").doc(id).onSnapshot((doc) => {
                 if (doc.exists) {
-                    const cloudData = doc.data();
-                    data = { ...data, ...cloudData };
+                    data = { ...data, ...doc.data() };
                     if(!data.limits) data.limits = {};
                     CATEGORIES.forEach(c => { if(data.limits[c]===undefined) data.limits[c]=0; });
                     updateUI();
@@ -416,97 +379,21 @@
             });
             closeTripManager();
         }
-
-        // --- RENAME & COPY ---
-        function renameTrip() {
-            if(!currentTripId) return alert("No trip selected");
-            const newName = prompt("Enter new name:", data.tripName);
-            if(newName && newName !== data.tripName) {
-                data.tripName = newName;
-                document.getElementById('current-trip-name').innerText = newName;
-                document.getElementById('sum-title').innerText = newName;
-                save();
-            }
-        }
-
-        function saveCopy() {
-            if(!db || !currentTripId) return alert("No trip to copy");
-            const newName = prompt("Enter name for the copy:", data.tripName + " (Copy)");
-            if(!newName) return;
-            
-            const newId = 'trip_' + Date.now();
-            const copyData = { ...data, tripName: newName };
-            
-            db.collection("trips").doc(newId).set(copyData).then(() => {
-                loadTrip(newId, newName);
-                alert("Trip copied successfully!");
-            }).catch(() => { alert("Copy failed"); });
-        }
-
-        // --- DATA OPS ---
-        function save() {
-            if(db && currentTripId) {
-                data.tripName = document.getElementById('current-trip-name').innerText;
-                db.collection("trips").doc(currentTripId).set(data).catch(e => console.error(e));
-                loadTripList(); // Refresh list to show updates if name changed
-            }
-        }
-
-        function saveToFile() {
-            const fileName = (data.tripName || "trip").replace(/[^a-z0-9]/gi, '_').toLowerCase();
-            const blob = new Blob([JSON.stringify(data, null, 2)], {type : 'application/json'});
-            const link = document.createElement('a'); link.href = URL.createObjectURL(blob); 
-            link.download = `${fileName}.json`; 
-            link.click();
-        }
-
-        function loadFromFile(input) {
-            const file = input.files[0]; if(!file) return;
-            const reader = new FileReader(); 
-            reader.onload = function(e) {
-                try {
-                    const json = JSON.parse(e.target.result);
-                    if(db) {
-                        const newName = (json.tripName || "Imported") + " (File)";
-                        const newId = 'trip_' + Date.now();
-                        json.tripName = newName;
-                        db.collection("trips").doc(newId).set(json).then(() => {
-                            loadTrip(newId, newName);
-                        });
-                    } else {
-                        data = json; updateUI(); 
-                    }
-                    closeTripManager();
-                } catch(e) { alert("Invalid File"); }
-            };
-            reader.readAsText(file);
-        }
-
-        function resetData() {
-            if(confirm("Clear ALL data for this trip?")) {
-                data.items = []; data.expenses = [];
-                save(); updateUI();
-            }
-        }
+        function save() { if(db && currentTripId) { data.tripName = document.getElementById('current-trip-name').innerText; db.collection("trips").doc(currentTripId).set(data); } }
+        function renameTrip() { const n = prompt("New Name:", data.tripName); if(n) { data.tripName = n; save(); } }
+        function saveCopy() { const n = prompt("Name Copy:", data.tripName+"(Copy)"); if(n) { const id = 'trip_'+Date.now(); db.collection("trips").doc(id).set({...data, tripName:n}).then(()=>loadTrip(id,n)); } }
+        function saveToFile() { const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const l = document.createElement('a'); l.href = URL.createObjectURL(blob); l.download = "trip.json"; l.click(); }
+        function loadFromFile(input) { const r = new FileReader(); r.onload = e => { try { const j = JSON.parse(e.target.result); if(db) { const id='trip_'+Date.now(); j.tripName+="(File)"; db.collection("trips").doc(id).set(j).then(()=>loadTrip(id,j.tripName)); } else { data=j; updateUI(); } closeTripManager(); } catch(e){alert("Error");} }; r.readAsText(input.files[0]); }
+        function resetData() { if(confirm("Clear Data?")) { data.items=[]; data.expenses=[]; save(); updateUI(); } }
 
         function updateUI() { renderJourney(); renderEditList(); renderSmartBudget(); renderSummary(); }
 
-        // --- UI & LOGIC (Identical to V30) ---
-        function switchTab(t) {
-            document.querySelectorAll('.tab-content').forEach(e => e.classList.remove('active'));
-            document.getElementById('tab-'+t).classList.add('active');
-            document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('bg-gray-100', 'text-gray-700'); b.classList.add('text-gray-600'); });
-            document.getElementById('btn-'+t).classList.remove('text-gray-600'); document.getElementById('btn-'+t).classList.add('bg-gray-100', 'text-gray-700');
-            if(t==='summary') renderSummary();
-        }
-        function toggleFilter(f) {
-            activeFilter = f;
-            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById('fil-'+f).classList.add('active');
-            renderJourney();
-        }
+        // --- TABS & FILTER ---
+        function switchTab(t) { document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active')); document.getElementById('tab-'+t).classList.add('active'); document.querySelectorAll('.tab-btn').forEach(b=>{b.classList.remove('bg-gray-100','text-gray-700');b.classList.add('text-gray-600')}); document.getElementById('btn-'+t).classList.remove('text-gray-600');document.getElementById('btn-'+t).classList.add('bg-gray-100','text-gray-700'); if(t==='summary'){ renderSummary(); } }
+        function toggleFilter(f) { activeFilter=f; document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active')); document.getElementById('fil-'+f).classList.add('active'); renderJourney(); }
+        
+        // --- JOURNEY ---
         function calcDuration(d1,t1,d2,t2){if(!d1||!t1||!d2||!t2)return null;const s=new Date(`${d1}T${t1}`),e=new Date(`${d2}T${t2}`),diff=e-s;if(diff<=0)return null;const h=Math.floor(diff/36e5),m=Math.floor((diff%36e5)/6e4);return h>0?`${h}h ${m}m`:`${m}m`;}
-
         function renderJourney() {
             const c=document.getElementById('timeline-feed');c.innerHTML='';
             if(!data.items.length){document.getElementById('journey-empty').classList.remove('hidden');return;}
@@ -537,59 +424,103 @@
             lucide.createIcons();
         }
 
-        // --- EDIT LOGIC ---
-        function clearInputs() {
-            document.getElementById('in-name').value = ''; document.getElementById('in-from').value = ''; document.getElementById('in-to').value = '';
-            document.getElementById('in-link').value = ''; document.getElementById('in-note').value = '';
-            document.getElementById('in-start-time').value = ''; document.getElementById('in-end-time').value = '';
-            editingId = null;
-            document.getElementById('btn-add-item').innerText = "Add to Plan";
-            document.getElementById('btn-cancel-edit').classList.add('hidden');
-            document.getElementById('edit-form-title').innerText = "Add Schedule";
-        }
-        function setType(t){
-            currentType=t;
-            ['activity','flight','transport','stay'].forEach(x=>{const b=document.getElementById('type-'+x);if(x===t){b.className="px-3 py-1.5 text-xs font-bold rounded-md bg-white shadow text-indigo-600 transition-all whitespace-nowrap flex-shrink-0";if(t==='flight')b.classList.add('text-blue-600');if(t==='transport')b.classList.add('text-emerald-600');if(t==='stay')b.classList.add('text-orange-600');}else b.className="px-3 py-1.5 text-xs font-bold rounded-md text-gray-500 hover:text-gray-900 transition-all whitespace-nowrap flex-shrink-0"});
-            const i=document.getElementById('in-icon'),n=document.getElementById('in-name'),r=document.getElementById('route-inputs');
-            if(t==='flight'||t==='transport'){i.value=t==='flight'?'✈️':'🚆';n.classList.add('hidden');r.classList.remove('hidden');r.classList.add('flex')}else{i.value=t==='stay'?'🏨':'📍';n.classList.remove('hidden');r.classList.remove('flex');r.classList.add('hidden');} 
-            clearInputs();
-        }
-        function addItem() {
-            const d = document.getElementById('in-start-date').value; let n = document.getElementById('in-name').value, f = document.getElementById('in-from').value, to = document.getElementById('in-to').value;
-            if((currentType==='flight'||currentType==='transport')&&(!f||!to)) return alert('Route needed');
-            if(currentType!=='flight'&&currentType!=='transport'&&!n) return alert('Name needed');
-            if(!d) return alert('Date needed');
-            const item = { id: editingId ? editingId : Date.now(), type: currentType, icon: document.getElementById('in-icon').value, name: n||`${f} ✈️ ${to}`, from: f, to: to, link: document.getElementById('in-link').value, startDate: d, startTime: document.getElementById('in-start-time').value, endDate: document.getElementById('in-end-date').value||d, endTime: document.getElementById('in-end-time').value, note: document.getElementById('in-note').value };
-            if(editingId) { const idx = data.items.findIndex(i => i.id === editingId); if(idx !== -1) data.items[idx] = item; } else { data.items.push(item); }
-            save(); clearInputs();
-        }
-        function editItem(id) {
-            const item = data.items.find(i => i.id === id); if(!item) return;
-            switchTab('planner'); setType(item.type);
-            document.getElementById('in-icon').value = item.icon; document.getElementById('in-name').value = item.name; document.getElementById('in-from').value = item.from || ''; document.getElementById('in-to').value = item.to || ''; document.getElementById('in-link').value = item.link || ''; document.getElementById('in-note').value = item.note || ''; document.getElementById('in-start-date').value = item.startDate; document.getElementById('in-start-time').value = item.startTime || ''; document.getElementById('in-end-date').value = item.endDate || item.startDate; document.getElementById('in-end-time').value = item.endTime || '';
-            editingId = id; document.getElementById('btn-add-item').innerText = "Update Plan"; document.getElementById('edit-form-title').innerText = "Edit Schedule"; document.getElementById('btn-cancel-edit').classList.remove('hidden');
-        }
-        function deleteItem(id) { if(confirm('Delete?')) { data.items = data.items.filter(i=>i.id!==id); save(); } }
-        function renderEditList(){ document.getElementById('edit-list').innerHTML = data.items.sort((a,b)=>a.startDate.localeCompare(b.startDate)).map(i => { const title = (i.from && i.to) ? `${i.from} ✈️ ${i.to}` : i.name; return `<div class="p-4 hover:bg-gray-50 flex items-center gap-3"><div class="text-xl w-8 text-center">${i.icon}</div><div class="flex-grow"><div class="font-bold text-gray-800 text-sm">${title}</div><div class="text-xs text-gray-500">${i.startDate} ${i.startTime||''}</div></div><button onclick="editItem(${i.id})" class="text-gray-300 hover:text-blue-500 p-2"><i data-lucide="pencil" class="w-4 h-4"></i></button><button onclick="deleteItem(${i.id})" class="text-gray-300 hover:text-red-500 p-2"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>`; }).join(''); lucide.createIcons(); }
+        // --- PLANNER EDIT ---
+        function clearInputs() { document.getElementById('in-name').value='';document.getElementById('in-from').value='';document.getElementById('in-to').value='';document.getElementById('in-link').value='';document.getElementById('in-note').value='';document.getElementById('in-start-time').value='';document.getElementById('in-end-time').value='';editingId=null;document.getElementById('btn-add-item').innerText="Add to Plan";document.getElementById('btn-cancel-edit').classList.add('hidden');document.getElementById('edit-form-title').innerText="Add Schedule"; }
+        function setType(t){ currentType=t;['activity','flight','transport','stay'].forEach(x=>{const b=document.getElementById('type-'+x);if(x===t){b.className="px-3 py-1.5 text-xs font-bold rounded-md bg-white shadow text-indigo-600 transition-all whitespace-nowrap flex-shrink-0";if(t==='flight')b.classList.add('text-blue-600');if(t==='transport')b.classList.add('text-emerald-600');if(t==='stay')b.classList.add('text-orange-600');}else b.className="px-3 py-1.5 text-xs font-bold rounded-md text-gray-500 hover:text-gray-900 transition-all whitespace-nowrap flex-shrink-0"});const i=document.getElementById('in-icon'),n=document.getElementById('in-name'),r=document.getElementById('route-inputs');if(t==='flight'||t==='transport'){i.value=t==='flight'?'✈️':'🚆';n.classList.add('hidden');r.classList.remove('hidden');r.classList.add('flex')}else{i.value=t==='stay'?'🏨':'📍';n.classList.remove('hidden');r.classList.remove('flex');r.classList.add('hidden');} clearInputs();}
+        function addItem() { const d=document.getElementById('in-start-date').value;let n=document.getElementById('in-name').value,f=document.getElementById('in-from').value,to=document.getElementById('in-to').value;if((currentType==='flight'||currentType==='transport')&&(!f||!to))return alert('Route needed');if(currentType!=='flight'&&currentType!=='transport'&&!n)return alert('Name needed');if(!d)return alert('Date needed');const item={id:editingId?editingId:Date.now(),type:currentType,icon:document.getElementById('in-icon').value,name:n||`${f} ✈️ ${to}`,from:f,to:to,link:document.getElementById('in-link').value,startDate:d,startTime:document.getElementById('in-start-time').value,endDate:document.getElementById('in-end-date').value||d,endTime:document.getElementById('in-end-time').value,note:document.getElementById('in-note').value};if(editingId){const idx=data.items.findIndex(i=>i.id===editingId);if(idx!==-1)data.items[idx]=item;}else{data.items.push(item);}save();clearInputs();}
+        function editItem(id) { const item=data.items.find(i=>i.id===id);if(!item)return;switchTab('planner');setType(item.type);document.getElementById('in-icon').value=item.icon;document.getElementById('in-name').value=item.name;document.getElementById('in-from').value=item.from||'';document.getElementById('in-to').value=item.to||'';document.getElementById('in-link').value=item.link||'';document.getElementById('in-note').value=item.note||'';document.getElementById('in-start-date').value=item.startDate;document.getElementById('in-start-time').value=item.startTime||'';document.getElementById('in-end-date').value=item.endDate||item.startDate;document.getElementById('in-end-time').value=item.endTime||'';editingId=id;document.getElementById('btn-add-item').innerText="Update Plan";document.getElementById('edit-form-title').innerText="Edit Schedule";document.getElementById('btn-cancel-edit').classList.remove('hidden'); }
+        function deleteItem(id) { if(confirm('Delete?')){data.items=data.items.filter(i=>i.id!==id);save();} }
+        function renderEditList(){ document.getElementById('edit-list').innerHTML=data.items.sort((a,b)=>a.startDate.localeCompare(b.startDate)).map(i=>{const title=(i.from&&i.to)?`${i.from} ✈️ ${i.to}`:i.name;return `<div class="p-4 hover:bg-gray-50 flex items-center gap-3"><div class="text-xl w-8 text-center">${i.icon}</div><div class="flex-grow"><div class="font-bold text-gray-800 text-sm">${title}</div><div class="text-xs text-gray-500">${i.startDate} ${i.startTime||''}</div></div><button onclick="editItem(${i.id})" class="text-gray-300 hover:text-blue-500 p-2"><i data-lucide="pencil" class="w-4 h-4"></i></button><button onclick="deleteItem(${i.id})" class="text-gray-300 hover:text-red-500 p-2"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>`}).join('');lucide.createIcons();}
 
-        // --- BUDGET ---
-        function updateAllFromTotal() { data.totalBudget = parseInt(document.getElementById('smart-total').value)||0; save(); renderSmartBudget(); }
+        // --- BUDGET LOGIC ---
+        function updateAllFromTotal() { data.totalBudget=parseInt(document.getElementById('smart-total').value)||0;save();renderSmartBudget(); }
         function updateLimitFromPercent(c,v){data.limits[c]=Math.round(data.totalBudget*(parseFloat(v)||0)/100);save();}
         function updatePercentFromLimit(c,v){data.limits[c]=parseInt(v)||0;save();}
+        
         function renderSmartBudget(){
-            document.getElementById('smart-total').value=data.totalBudget;let t=0;const s={};data.expenses.forEach(e=>{s[e.cat]=(s[e.cat]||0)+e.cost;t+=e.cost});document.getElementById('smart-spent').innerText=t.toLocaleString();const tb=document.getElementById('smart-budget-rows');tb.innerHTML='';CATEGORIES.forEach(c=>{const l=data.limits[c]||0,p=data.totalBudget>0?((l/data.totalBudget)*100).toFixed(1):0,sp=s[c]||0,ov=sp>l&&l>0;tb.innerHTML+=`<tr class="border-b border-gray-50"><td class="py-3 font-medium text-gray-700">${c}</td><td class="py-3"><div class="flex gap-1"><input type="number" class="w-12 p-1 border rounded text-right text-xs" value="${p}" onchange="updateLimitFromPercent('${c}',this.value)"><span class="text-xs text-gray-400">%</span></div></td><td class="py-3"><input type="number" class="w-24 p-1 border rounded text-right text-xs font-bold" value="${l}" onchange="updatePercentFromLimit('${c}',this.value)"></td><td class="py-3 text-right text-xs font-bold ${ov?'text-rose-500':'text-gray-500'}">${sp.toLocaleString()}</td></tr>`});document.getElementById('expense-list').innerHTML=data.expenses.sort((a,b)=>b.id-a.id).map(e=>`<tr class="hover:bg-gray-50 border-b border-gray-50"><td class="py-3 px-4 text-gray-500 whitespace-nowrap">${e.date}</td><td class="py-3 px-4"><span class="px-2 py-1 bg-gray-100 rounded text-xs text-gray-600 font-bold">${e.cat}</span></td><td class="py-3 px-4 font-bold text-gray-800">${e.name}</td><td class="py-3 px-4 text-right font-mono text-gray-700">₩${e.cost.toLocaleString()}</td><td class="py-3 px-4 text-right font-mono text-gray-500">${e.usd?'$'+e.usd:'-'}</td><td class="py-3 px-4 text-gray-600">${e.payer||'-'}</td><td class="py-3 px-4 text-gray-600">${e.method||'-'}</td><td class="py-3 px-4 text-gray-400 text-xs italic truncate max-w-[150px]">${e.note||''}</td><td class="py-3 px-2 text-center"><button onclick="deleteExpense(${e.id})" class="text-gray-300 hover:text-red-500"><i data-lucide="x" class="w-4 h-4"></i></button></td></tr>`).join('');
+            document.getElementById('smart-total').value = data.totalBudget;
+            let sumLimits = 0; CATEGORIES.forEach(c => sumLimits += (data.limits[c] || 0));
+            document.getElementById('limit-sum-display').innerText = `Allocated: ₩${sumLimits.toLocaleString()} / Total: ₩${data.totalBudget.toLocaleString()}`;
+            
+            let t=0; const s={};
+            data.expenses.forEach(e=>{s[e.cat]=(s[e.cat]||0)+e.cost; t+=e.cost});
+            document.getElementById('smart-spent').innerText = t.toLocaleString();
+            
+            const cardsContainer = document.getElementById('smart-budget-cards');
+            cardsContainer.innerHTML = '';
+            
+            CATEGORIES.forEach(c => {
+                const l = data.limits[c] || 0;
+                const p = data.totalBudget > 0 ? ((l/data.totalBudget)*100).toFixed(1) : 0;
+                const sp = s[c] || 0;
+                const ov = sp > l && l > 0;
+                let barPct = l > 0 ? Math.min((sp / l) * 100, 100) : 0;
+                let barColor = ov ? 'bg-rose-500' : (sp > l * 0.9 ? 'bg-orange-500' : 'bg-emerald-500');
+                if(sp===0) barPct=0;
+                
+                // NEW: Card Design for Category Budget
+                cardsContainer.innerHTML += `
+                    <div class="bg-white rounded-xl p-4 border border-gray-100 shadow-sm flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-bold text-gray-700 text-sm flex items-center gap-2">
+                                    <span class="w-2 h-2 rounded-full ${barColor}"></span> ${c}
+                                </span>
+                                <span class="text-xs font-mono font-bold ${ov?'text-rose-500':'text-gray-500'}">
+                                    ${sp.toLocaleString()} / ${l.toLocaleString()}
+                                </span>
+                            </div>
+                            <div class="w-full h-3 bg-gray-100 rounded-full overflow-hidden mb-3">
+                                <div class="h-full rounded-full ${barColor} transition-all duration-500" style="width:${barPct}%"></div>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 items-center bg-gray-50 p-2 rounded-lg">
+                            <div class="flex items-center gap-1 flex-1">
+                                <span class="text-[10px] text-gray-400 font-bold">SET %</span>
+                                <input type="number" class="w-full bg-transparent border-b border-gray-300 text-right text-xs font-bold outline-none focus:border-indigo-500" value="${p}" onchange="updateLimitFromPercent('${c}',this.value)">
+                            </div>
+                            <div class="w-px h-4 bg-gray-300"></div>
+                            <div class="flex items-center gap-1 flex-[1.5]">
+                                <span class="text-[10px] text-gray-400 font-bold">LIMIT</span>
+                                <input type="number" class="w-full bg-transparent border-b border-gray-300 text-right text-xs font-bold outline-none focus:border-indigo-500" value="${l}" onchange="updatePercentFromLimit('${c}',this.value)">
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Update Expense List
+            document.getElementById('expense-list').innerHTML = data.expenses.sort((a,b)=>b.id-a.id).map(e => `
+                <tr class="hover:bg-gray-50 border-b border-gray-50">
+                    <td class="py-3 px-4 text-gray-500 whitespace-nowrap">${e.date}</td>
+                    <td class="py-3 px-4"><span class="px-2 py-1 bg-gray-100 rounded text-xs text-gray-600 font-bold">${e.cat}</span></td>
+                    <td class="py-3 px-4 font-bold text-gray-800">${e.name}</td>
+                    <td class="py-3 px-4 text-right font-mono text-gray-700">₩${e.cost.toLocaleString()}</td>
+                    <td class="py-3 px-4 text-right font-mono text-gray-500">${e.usd?'$'+e.usd:'-'}</td>
+                    <td class="py-3 px-4 text-gray-600">${e.payer||'-'}</td>
+                    <td class="py-3 px-4 text-gray-600">${e.method||'-'}</td>
+                    <td class="py-3 px-4 text-gray-400 text-xs italic truncate max-w-[150px]">${e.note||''}</td>
+                    <td class="py-3 px-1 text-center"><button onclick="editExpense(${e.id})" class="text-gray-300 hover:text-blue-500"><i data-lucide="pencil" class="w-3 h-3"></i></button></td>
+                    <td class="py-3 px-1 text-center"><button onclick="deleteExpense(${e.id})" class="text-gray-300 hover:text-red-500"><i data-lucide="x" class="w-3 h-3"></i></button></td>
+                </tr>`).join('');
+            
             const totalSpent = data.expenses.reduce((a,c)=>a+c.cost,0);
             const pct = data.totalBudget > 0 ? Math.round(((data.totalBudget-totalSpent)/data.totalBudget)*100) : 0;
             document.getElementById('sum-remain-pct').innerText = pct + '%';
+            
             const ctx = document.getElementById('sumChartBudget').getContext('2d');
             if(chartBudget) chartBudget.destroy();
             chartBudget = new Chart(ctx, { type: 'doughnut', data: { labels: ['Spent', 'Remaining'], datasets: [{ data: [totalSpent, Math.max(0, data.totalBudget-totalSpent)], backgroundColor: ['#e5e7eb', '#4f46e5'], borderWidth:0 }] }, options: { cutout: '75%', plugins: { legend: {display:false}, tooltip: {enabled:false} } } });
+            lucide.createIcons();
         }
-        function addExpense(){const i={id:Date.now(),cat:document.getElementById('exp-cat').value,name:document.getElementById('exp-item').value,date:document.getElementById('exp-date').value,cost:parseInt(document.getElementById('exp-cost').value),usd:parseFloat(document.getElementById('exp-usd').value),payer:document.getElementById('exp-payer').value,method:document.getElementById('exp-method').value,note:document.getElementById('exp-note').value};if(!i.name||!i.cost)return;data.expenses.push(i);document.getElementById('exp-item').value='';document.getElementById('exp-cost').value='';save();}
-        function deleteExpense(id){data.expenses=data.expenses.filter(e=>e.id!==id);save();}
+
+        function addExpense(){ const i = { id: editingExpenseId ? editingExpenseId : Date.now(), cat: document.getElementById('exp-cat').value, name: document.getElementById('exp-item').value, date: document.getElementById('exp-date').value, cost: parseInt(document.getElementById('exp-cost').value), usd: parseFloat(document.getElementById('exp-usd').value), payer: document.getElementById('exp-payer').value, method: document.getElementById('exp-method').value, note: document.getElementById('exp-note').value }; if(!i.name || isNaN(i.cost)) return alert("Item Name and Cost are required."); if(editingExpenseId) { const idx = data.expenses.findIndex(e => e.id === editingExpenseId); if(idx !== -1) data.expenses[idx] = i; } else { data.expenses.push(i); } cancelEditExpense(); save(); renderSmartBudget(); }
+        function editExpense(id) { const exp = data.expenses.find(e => e.id === id); if(!exp) return; document.getElementById('exp-cat').value = exp.cat; document.getElementById('exp-date').value = exp.date; document.getElementById('exp-item').value = exp.name; document.getElementById('exp-cost').value = exp.cost; document.getElementById('exp-usd').value = exp.usd || ''; document.getElementById('exp-payer').value = exp.payer || ''; document.getElementById('exp-method').value = exp.method; document.getElementById('exp-note').value = exp.note || ''; editingExpenseId = id; const btn = document.getElementById('btn-add-exp'); btn.innerText = "Update"; btn.className = "w-full bg-green-600 text-white py-2 rounded-lg font-bold hover:bg-green-700 shadow-md transition-all"; document.getElementById('btn-cancel-exp').classList.remove('hidden'); document.querySelector('#tab-budget section').scrollIntoView({behavior: 'smooth'}); }
+        function cancelEditExpense() { editingExpenseId = null; document.getElementById('exp-item').value = ''; document.getElementById('exp-cost').value = ''; document.getElementById('exp-usd').value = ''; document.getElementById('exp-payer').value = ''; document.getElementById('exp-note').value = ''; const btn = document.getElementById('btn-add-exp'); btn.innerText = "Add"; btn.className = "w-full bg-indigo-600 text-white py-2 rounded-lg font-bold hover:bg-indigo-700 shadow-md transition-all"; document.getElementById('btn-cancel-exp').classList.add('hidden'); }
+        function deleteExpense(id){ if(confirm('Delete expense?')) { data.expenses=data.expenses.filter(e=>e.id!==id); if(editingExpenseId === id) cancelEditExpense(); save(); renderSmartBudget(); } }
         function downloadCSV(){let c='\uFEFFCategory,Date,Item,KRW,USD,Payer,Method,Note\n';data.expenses.forEach(e=>{c+=`"${e.cat}","${e.date}","${e.name}",${e.cost},${e.usd||0},"${e.payer||''}","${e.method||''}","${e.note||''}"\n`});const b=new Blob([c],{type:'text/csv;charset=utf-8;'});const l=document.createElement("a");l.href=URL.createObjectURL(b);l.download="trip_expenses.csv";document.body.appendChild(l);l.click();document.body.removeChild(l);}
 
-        // --- DASHBOARD ---
+        // --- DASHBOARD: DAY SLIDER LOGIC ---
         function renderSummary() {
             const dates = data.items.map(i => i.startDate).sort();
             document.getElementById('sum-dates').innerText = dates.length ? `${dates[0]} ~ ${dates[dates.length-1]}` : 'Set dates';
@@ -606,14 +537,54 @@
             document.getElementById('cnt-activity').innerText = cnts.activity;
             document.getElementById('sum-spent-total').innerText = data.expenses.reduce((a,c)=>a+c.cost,0).toLocaleString();
             
-            const routeBox = document.getElementById('sum-route-flow');
-            routeBox.innerHTML = '';
-            const routes = data.items.filter(i => (i.type==='flight'||i.type==='transport') && i.from && i.to).sort((a,b)=>a.startDate.localeCompare(b.startDate));
-            if(routes.length) {
-                routes.forEach((r, idx) => {
-                    routeBox.innerHTML += `<div class="route-card flex-shrink-0 flex items-center gap-2"><div class="flex flex-col items-center min-w-[80px]"><span class="text-xs font-bold text-gray-400 mb-1">FROM</span><span class="font-bold text-gray-800 text-sm bg-white border border-gray-200 px-3 py-1 rounded-lg shadow-sm whitespace-nowrap">${r.from}</span></div><div class="route-connector flex flex-col items-center w-16"><span class="text-2xl mb-1">${r.icon}</span><div class="w-full h-0.5 bg-dashed bg-gray-300"></div></div><div class="flex flex-col items-center min-w-[80px]"><span class="text-xs font-bold text-gray-400 mb-1">TO</span><span class="font-bold text-gray-800 text-sm bg-white border border-gray-200 px-3 py-1 rounded-lg shadow-sm whitespace-nowrap">${r.to}</span></div></div>`;
+            // Render Day Slider
+            const slider = document.getElementById('sum-day-slider');
+            slider.innerHTML = '';
+            
+            // Group by Date
+            const grouped = {};
+            data.items.forEach(i => {
+                if(!grouped[i.startDate]) grouped[i.startDate] = [];
+                grouped[i.startDate].push(i);
+            });
+            const sortedDates = Object.keys(grouped).sort();
+            
+            if(sortedDates.length === 0) {
+                 slider.innerHTML = '<span class="text-gray-400 italic text-sm w-full text-center py-4">Add your schedule to see the daily flow.</span>';
+                 return;
+            }
+
+            sortedDates.forEach((date, idx) => {
+                const dayItems = grouped[date];
+                const dateObj = new Date(date);
+                const dayStr = dateObj.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+                const weekday = dateObj.toLocaleDateString('en-US', {weekday:'short'});
+                
+                // Collect Icons (Max 3)
+                let iconsHtml = '';
+                dayItems.slice(0,3).forEach(item => {
+                    let color = 'text-gray-600';
+                    if(item.type==='flight') color='text-blue-500';
+                    if(item.type==='stay') color='text-orange-500';
+                    if(item.type==='activity') color='text-indigo-500';
+                    iconsHtml += `<span class="${color} text-lg">${item.icon}</span>`;
                 });
-            } else { routeBox.innerHTML = '<span class="text-sm text-gray-400 italic w-full text-center">Add flights or transport to see your route.</span>'; }
+                if(dayItems.length > 3) iconsHtml += `<span class="text-xs text-gray-400 font-bold ml-1">+${dayItems.length-3}</span>`;
+
+                slider.innerHTML += `
+                    <div class="day-card flex flex-col items-center gap-3 group cursor-pointer" onclick="switchTab('journey')">
+                        <div class="day-connector"></div>
+                        <div class="font-bold text-gray-400 text-xs uppercase tracking-wider">Day ${idx+1}</div>
+                        <div class="w-16 h-16 rounded-full bg-white border-2 border-indigo-100 shadow-sm flex items-center justify-center flex-col z-10 group-hover:border-indigo-500 transition-colors">
+                            <div class="flex gap-0.5 justify-center flex-wrap px-2">${iconsHtml}</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="font-bold text-gray-800 text-sm">${dayStr}</div>
+                            <div class="text-[10px] text-gray-400 uppercase">${weekday}</div>
+                        </div>
+                    </div>
+                `;
+            });
         }
     </script>
 </body>
