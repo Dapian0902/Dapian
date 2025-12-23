@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Trip Planner v0.33 (Day Slider)</title>
+    <title>Trip Planner v0.34 (Fixes)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -33,7 +33,6 @@
 
         .bento-card { background: white; border-radius: 1.5rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05); border: 1px solid #f3f4f6; }
         
-        /* New Timeline Slider Styles */
         .day-card { min-width: 100px; scroll-snap-align: center; position: relative; }
         .day-connector { position: absolute; top: 50%; left: 100%; width: 24px; height: 2px; background: #e5e7eb; transform: translateY(-50%); z-index: 0; }
         .day-card:last-child .day-connector { display: none; }
@@ -152,7 +151,6 @@
                         <div class="text-xs font-bold text-gray-400 uppercase flex items-center gap-2"><i data-lucide="milestone" class="w-4 h-4"></i> Day by Day</div>
                         <div class="text-xs text-gray-300">Scroll ➜</div>
                     </div>
-                    
                     <div class="flex items-center gap-6 overflow-x-auto pb-6 pt-2 touch-pan-x snap-x" id="sum-day-slider">
                         <span class="text-gray-400 italic text-sm w-full text-center py-4">Add your schedule to see the daily flow.</span>
                     </div>
@@ -356,8 +354,19 @@
                 querySnapshot.forEach((doc) => {
                     const t = doc.data();
                     const isActive = doc.id === currentTripId ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:bg-gray-50';
-                    listEl.innerHTML += `<div onclick="loadTrip('${doc.id}', '${t.tripName}')" class="p-3 rounded-lg border cursor-pointer flex justify-between items-center transition-all ${isActive}"><span class="font-bold text-gray-800 text-sm">${t.tripName||'Untitled'}</span><button class="bg-white border border-gray-200 text-indigo-600 px-3 py-1 rounded text-xs font-bold hover:bg-indigo-600 hover:text-white transition-colors">LOAD</button></div>`;
+                    // Added Delete Button with stopPropagation
+                    listEl.innerHTML += `
+                        <div class="p-3 rounded-lg border flex justify-between items-center transition-all ${isActive}">
+                            <div onclick="loadTrip('${doc.id}', '${t.tripName}')" class="flex-grow cursor-pointer">
+                                <span class="font-bold text-gray-800 text-sm">${t.tripName||'Untitled'}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button onclick="loadTrip('${doc.id}', '${t.tripName}')" class="bg-white border border-gray-200 text-indigo-600 px-3 py-1 rounded text-xs font-bold hover:bg-indigo-600 hover:text-white transition-colors">LOAD</button>
+                                <button onclick="deleteTrip('${doc.id}', event)" class="p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500 rounded transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                            </div>
+                        </div>`;
                 });
+                lucide.createIcons();
             });
         }
         function createNewTrip() {
@@ -379,8 +388,40 @@
             });
             closeTripManager();
         }
-        function save() { if(db && currentTripId) { data.tripName = document.getElementById('current-trip-name').innerText; db.collection("trips").doc(currentTripId).set(data); } }
-        function renameTrip() { const n = prompt("New Name:", data.tripName); if(n) { data.tripName = n; save(); } }
+        function deleteTrip(id, event) {
+            event.stopPropagation();
+            if(confirm("Are you sure you want to permanently delete this trip?")) {
+                db.collection("trips").doc(id).delete().then(() => {
+                    loadTripList(); // Refresh List
+                    if(currentTripId === id) {
+                        // Reset if deleted current
+                        data = { tripName: "New Trip", totalBudget: 2000000, limits: {}, items: [], expenses: [] };
+                        currentTripId = null;
+                        if(unsubscribe) unsubscribe();
+                        updateUI();
+                        document.getElementById('current-trip-name').innerText = "Select Trip";
+                    }
+                });
+            }
+        }
+        
+        function save() { 
+            if(db && currentTripId) { 
+                data.tripName = document.getElementById('current-trip-name').innerText; 
+                db.collection("trips").doc(currentTripId).set(data).then(() => {
+                    loadTripList(); // Refresh list to update name there too
+                });
+            } 
+        }
+        function renameTrip() { 
+            const n = prompt("New Name:", data.tripName); 
+            if(n && n.trim() !== "") { 
+                data.tripName = n; 
+                document.getElementById('current-trip-name').innerText = n;
+                document.getElementById('sum-title').innerText = n;
+                save(); 
+            } 
+        }
         function saveCopy() { const n = prompt("Name Copy:", data.tripName+"(Copy)"); if(n) { const id = 'trip_'+Date.now(); db.collection("trips").doc(id).set({...data, tripName:n}).then(()=>loadTrip(id,n)); } }
         function saveToFile() { const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const l = document.createElement('a'); l.href = URL.createObjectURL(blob); l.download = "trip.json"; l.click(); }
         function loadFromFile(input) { const r = new FileReader(); r.onload = e => { try { const j = JSON.parse(e.target.result); if(db) { const id='trip_'+Date.now(); j.tripName+="(File)"; db.collection("trips").doc(id).set(j).then(()=>loadTrip(id,j.tripName)); } else { data=j; updateUI(); } closeTripManager(); } catch(e){alert("Error");} }; r.readAsText(input.files[0]); }
@@ -458,7 +499,6 @@
                 let barColor = ov ? 'bg-rose-500' : (sp > l * 0.9 ? 'bg-orange-500' : 'bg-emerald-500');
                 if(sp===0) barPct=0;
                 
-                // NEW: Card Design for Category Budget
                 cardsContainer.innerHTML += `
                     <div class="bg-white rounded-xl p-4 border border-gray-100 shadow-sm flex flex-col justify-between">
                         <div>
@@ -489,7 +529,6 @@
                 `;
             });
 
-            // Update Expense List
             document.getElementById('expense-list').innerHTML = data.expenses.sort((a,b)=>b.id-a.id).map(e => `
                 <tr class="hover:bg-gray-50 border-b border-gray-50">
                     <td class="py-3 px-4 text-gray-500 whitespace-nowrap">${e.date}</td>
@@ -537,11 +576,9 @@
             document.getElementById('cnt-activity').innerText = cnts.activity;
             document.getElementById('sum-spent-total').innerText = data.expenses.reduce((a,c)=>a+c.cost,0).toLocaleString();
             
-            // Render Day Slider
             const slider = document.getElementById('sum-day-slider');
             slider.innerHTML = '';
             
-            // Group by Date
             const grouped = {};
             data.items.forEach(i => {
                 if(!grouped[i.startDate]) grouped[i.startDate] = [];
@@ -560,7 +597,6 @@
                 const dayStr = dateObj.toLocaleDateString('en-US', {month:'short', day:'numeric'});
                 const weekday = dateObj.toLocaleDateString('en-US', {weekday:'short'});
                 
-                // Collect Icons (Max 3)
                 let iconsHtml = '';
                 dayItems.slice(0,3).forEach(item => {
                     let color = 'text-gray-600';
