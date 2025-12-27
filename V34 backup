@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Trip Planner v0.34 (Fixes)</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .filter-btn.active { color: white; border-color: transparent; }
+        .filter-btn { transition: all 0.2s; white-space: nowrap; }
+        #fil-all.active { background-color: #374151; }
+        #fil-activity.active { background-color: #4f46e5; }
+        #fil-flight.active { background-color: #2563eb; }
+        #fil-transport.active { background-color: #059669; }
+        #fil-stay.active { background-color: #ea580c; }
+        
+        .table-scroll::-webkit-scrollbar { height: 6px; }
+        .table-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .bento-card { background: white; border-radius: 1.5rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05); border: 1px solid #f3f4f6; }
+        
+        .day-card { min-width: 100px; scroll-snap-align: center; position: relative; }
+        .day-connector { position: absolute; top: 50%; left: 100%; width: 24px; height: 2px; background: #e5e7eb; transform: translateY(-50%); z-index: 0; }
+        .day-card:last-child .day-connector { display: none; }
+
+        #trip-modal { transition: opacity 0.2s ease; }
+        #trip-modal.hidden { opacity: 0; pointer-events: none; z-index: -1; }
+        #trip-modal.flex { opacity: 1; pointer-events: auto; z-index: 100; }
+
+        @media screen and (max-width: 768px) {
+            input, select, textarea { font-size: 16px !important; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 antialiased min-h-screen flex flex-col pb-safe">
+
+    <nav class="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-2 md:px-4">
+            <div class="flex justify-between h-14 md:h-16">
+                <div class="flex items-center gap-2 md:gap-3">
+                    <div class="bg-gradient-to-br from-indigo-600 to-violet-600 p-1.5 rounded-lg text-white shadow-lg flex-shrink-0">
+                        <i data-lucide="map" class="w-5 h-5"></i>
+                    </div>
+                    <div class="flex flex-col overflow-hidden">
+                        <span class="font-black text-xl tracking-tight text-gray-900 leading-none hidden md:block">Trip Planner</span>
+                        <div class="flex items-center gap-1 cursor-pointer hover:bg-gray-100 px-1 py-1 rounded transition-colors" onclick="openTripManager()">
+                            <span id="current-trip-name" class="text-sm font-bold text-indigo-700 truncate max-w-[120px] md:max-w-[150px]">Select Trip</span>
+                            <i data-lucide="chevron-down" class="w-4 h-4 text-indigo-400 flex-shrink-0"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-1 md:gap-2">
+                    <button onclick="switchTab('summary')" id="btn-summary" class="tab-btn p-2 md:px-3 md:py-2 rounded-lg text-sm font-bold bg-gray-100 text-gray-700 flex items-center gap-2">
+                        <i data-lucide="layout-grid" class="w-5 h-5 md:w-4 md:h-4"></i> <span class="hidden md:inline">Dash</span>
+                    </button>
+                    <button onclick="switchTab('journey')" id="btn-journey" class="tab-btn p-2 md:px-3 md:py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 flex items-center gap-2">
+                        <i data-lucide="book-open" class="w-5 h-5 md:w-4 md:h-4"></i> <span class="hidden md:inline">Journey</span>
+                    </button>
+                    <button onclick="switchTab('planner')" id="btn-planner" class="tab-btn p-2 md:px-3 md:py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 flex items-center gap-2">
+                        <i data-lucide="edit-3" class="w-5 h-5 md:w-4 md:h-4"></i> <span class="hidden md:inline">Edit</span>
+                    </button>
+                    <button onclick="switchTab('budget')" id="btn-budget" class="tab-btn p-2 md:px-3 md:py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 flex items-center gap-2">
+                        <i data-lucide="pie-chart" class="w-5 h-5 md:w-4 md:h-4"></i> <span class="hidden md:inline">Budget</span>
+                    </button>
+                    
+                    <div class="w-px h-6 bg-gray-300 mx-1 md:mx-2"></div>
+                    
+                    <div class="relative">
+                        <button id="btn-data-menu" onclick="toggleDataMenu()" class="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors focus:outline-none">
+                            <i data-lucide="more-vertical" class="w-5 h-5"></i>
+                        </button>
+                        <div id="data-dropdown" class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 hidden z-50 overflow-hidden ring-1 ring-black ring-opacity-5">
+                            <div class="px-4 py-3 bg-gray-50 border-b border-gray-100">
+                                <span class="text-xs font-bold text-gray-400 uppercase">Trip Actions</span>
+                            </div>
+                            <button onclick="renameTrip()" class="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 flex items-center gap-3 text-gray-700">
+                                <i data-lucide="edit-2" class="w-4 h-4 text-gray-400"></i> Rename Trip
+                            </button>
+                            <button onclick="saveCopy()" class="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 flex items-center gap-3 text-gray-700 border-b border-gray-100">
+                                <i data-lucide="copy" class="w-4 h-4 text-gray-400"></i> Save as Copy
+                            </button>
+                            <div class="px-4 py-2 bg-gray-50 border-b border-gray-100 mt-1">
+                                <span class="text-xs font-bold text-gray-400 uppercase">Data</span>
+                            </div>
+                            <button onclick="saveToFile()" class="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 flex items-center gap-3 text-gray-700">
+                                <i data-lucide="download" class="w-4 h-4 text-gray-400"></i> Export JSON
+                            </button>
+                            <button onclick="resetData()" class="w-full text-left px-4 py-3 text-sm hover:bg-red-50 flex items-center gap-3 text-red-600">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i> Reset Data
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main id="tab-summary" class="tab-content active w-full flex-grow p-4 md:p-8">
+        <div class="max-w-6xl mx-auto">
+            <h1 class="text-2xl md:text-3xl font-black text-gray-900 mb-4 md:mb-6">Trip Overview</h1>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6 mb-8">
+                <div class="bento-card md:col-span-2 p-6 bg-gradient-to-br from-indigo-600 to-blue-700 text-white flex flex-col justify-between relative overflow-hidden min-h-[180px]">
+                    <div class="absolute right-[-20px] bottom-[-20px] opacity-10"><i data-lucide="plane" class="w-48 h-48"></i></div>
+                    <div><div class="text-indigo-200 font-bold uppercase text-xs tracking-wider mb-1">Current Plan</div><h2 class="text-2xl md:text-3xl font-black leading-tight truncate pr-4" id="sum-title">No Trip Selected</h2></div>
+                    <div class="mt-8"><div class="text-4xl md:text-5xl font-black mb-2" id="sum-dday">-</div><div class="text-indigo-100 font-medium text-sm md:text-base" id="sum-dates">Set schedule</div></div>
+                </div>
+                
+                <div class="bento-card md:col-span-1 p-5 flex flex-row md:flex-col items-center justify-between md:justify-center gap-4">
+                    <div class="text-left md:text-center">
+                        <div class="text-xs font-bold text-gray-400 uppercase mb-2">Budget Health</div>
+                        <div class="mt-1"><div class="text-xs text-gray-400">Total Spent</div><div class="font-bold text-indigo-600 text-lg" id="sum-spent-total">0</div></div>
+                    </div>
+                    <div class="relative w-24 h-24 md:w-32 md:h-32 flex-shrink-0">
+                        <canvas id="sumChartBudget"></canvas>
+                        <div class="absolute inset-0 flex items-center justify-center flex-col"><span class="text-[10px] text-gray-400">Left</span><span class="font-bold text-gray-800 text-sm" id="sum-remain-pct">0%</span></div>
+                    </div>
+                </div>
+                
+                <div class="bento-card md:col-span-1 p-5 grid grid-cols-3 md:flex md:flex-col justify-center gap-2 md:gap-4">
+                    <div class="flex flex-col md:flex-row items-center gap-2 md:gap-3 bg-gray-50 md:bg-transparent p-2 md:p-0 rounded-lg">
+                        <div class="bg-blue-100 p-2 rounded-lg text-blue-600"><i data-lucide="plane" class="w-4 h-4 md:w-5 md:h-5"></i></div>
+                        <div class="text-center md:text-left"><div class="text-lg md:text-2xl font-black text-gray-800 leading-none" id="cnt-flight">0</div><div class="text-[10px] md:text-xs text-gray-400 font-bold uppercase">Flights</div></div>
+                    </div>
+                    <div class="flex flex-col md:flex-row items-center gap-2 md:gap-3 bg-gray-50 md:bg-transparent p-2 md:p-0 rounded-lg">
+                        <div class="bg-orange-100 p-2 rounded-lg text-orange-600"><i data-lucide="home" class="w-4 h-4 md:w-5 md:h-5"></i></div>
+                        <div class="text-center md:text-left"><div class="text-lg md:text-2xl font-black text-gray-800 leading-none" id="cnt-stay">0</div><div class="text-[10px] md:text-xs text-gray-400 font-bold uppercase">Stays</div></div>
+                    </div>
+                    <div class="flex flex-col md:flex-row items-center gap-2 md:gap-3 bg-gray-50 md:bg-transparent p-2 md:p-0 rounded-lg">
+                        <div class="bg-emerald-100 p-2 rounded-lg text-emerald-600"><i data-lucide="map" class="w-4 h-4 md:w-5 md:h-5"></i></div>
+                        <div class="text-center md:text-left"><div class="text-lg md:text-2xl font-black text-gray-800 leading-none" id="cnt-activity">0</div><div class="text-[10px] md:text-xs text-gray-400 font-bold uppercase">Acts</div></div>
+                    </div>
+                </div>
+                
+                <div class="bento-card md:col-span-4 p-5 md:p-6 bg-white">
+                    <div class="flex justify-between items-center mb-6">
+                        <div class="text-xs font-bold text-gray-400 uppercase flex items-center gap-2"><i data-lucide="milestone" class="w-4 h-4"></i> Day by Day</div>
+                        <div class="text-xs text-gray-300">Scroll ➜</div>
+                    </div>
+                    <div class="flex items-center gap-6 overflow-x-auto pb-6 pt-2 touch-pan-x snap-x" id="sum-day-slider">
+                        <span class="text-gray-400 italic text-sm w-full text-center py-4">Add your schedule to see the daily flow.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <main id="tab-journey" class="tab-content w-full flex-grow p-4 md:p-8 bg-white">
+        <div class="max-w-2xl mx-auto">
+            <div class="flex overflow-x-auto hide-scroll gap-2 mb-8 sticky top-16 md:top-20 z-40 bg-white/90 backdrop-blur p-2 rounded-full border border-gray-200 shadow-sm w-full md:w-fit mx-auto">
+                <button onclick="toggleFilter('all')" id="fil-all" class="filter-btn active px-4 py-1.5 rounded-full text-xs font-bold border border-gray-200 bg-gray-50 text-gray-500 flex-shrink-0">All</button>
+                <button onclick="toggleFilter('activity')" id="fil-activity" class="filter-btn px-4 py-1.5 rounded-full text-xs font-bold border border-gray-200 bg-white text-gray-500 hover:text-indigo-600 flex-shrink-0">Activity</button>
+                <button onclick="toggleFilter('flight')" id="fil-flight" class="filter-btn px-4 py-1.5 rounded-full text-xs font-bold border border-gray-200 bg-white text-gray-500 hover:text-blue-600 flex-shrink-0">Flight</button>
+                <button onclick="toggleFilter('transport')" id="fil-transport" class="filter-btn px-4 py-1.5 rounded-full text-xs font-bold border border-gray-200 bg-white text-gray-500 hover:text-emerald-600 flex-shrink-0">Transport</button>
+                <button onclick="toggleFilter('stay')" id="fil-stay" class="filter-btn px-4 py-1.5 rounded-full text-xs font-bold border border-gray-200 bg-white text-gray-500 hover:text-orange-600 flex-shrink-0">Stay</button>
+            </div>
+            <div id="timeline-feed" class="space-y-12 pb-20"></div>
+            <div id="journey-empty" class="text-center py-20 hidden"><p class="text-gray-400">No schedule yet.</p></div>
+        </div>
+    </main>
+
+    <main id="tab-planner" class="tab-content w-full flex-grow p-4 md:p-8 bg-gray-50">
+        <div class="max-w-2xl mx-auto space-y-6">
+            <div class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100">
+                <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
+                    <h3 class="font-bold text-gray-800 text-lg flex items-center gap-2"><i data-lucide="plus-circle" class="text-indigo-600"></i> <span id="edit-form-title">Add Schedule</span></h3>
+                    <div class="flex bg-gray-100 rounded-lg p-1 overflow-x-auto hide-scroll">
+                        <button onclick="setType('activity')" id="type-activity" class="px-3 py-1.5 text-xs font-bold rounded-md bg-white shadow text-indigo-600 transition-all whitespace-nowrap flex-shrink-0">Activity</button>
+                        <button onclick="setType('flight')" id="type-flight" class="px-3 py-1.5 text-xs font-bold rounded-md text-gray-500 hover:text-gray-900 transition-all whitespace-nowrap flex-shrink-0">Flight</button>
+                        <button onclick="setType('transport')" id="type-transport" class="px-3 py-1.5 text-xs font-bold rounded-md text-gray-500 hover:text-gray-900 transition-all whitespace-nowrap flex-shrink-0">Transport</button>
+                        <button onclick="setType('stay')" id="type-stay" class="px-3 py-1.5 text-xs font-bold rounded-md text-gray-500 hover:text-gray-900 transition-all whitespace-nowrap flex-shrink-0">Stay</button>
+                    </div>
+                </div>
+                <div class="space-y-4">
+                    <div class="flex gap-2">
+                        <select id="in-icon" class="w-16 md:w-24 p-2 md:p-3 border border-gray-200 rounded-xl text-xl md:text-2xl bg-gray-50 text-center outline-none">
+                            <option value="📍">📍</option><option value="📷">📷</option><option value="🍔">🍔</option><option value="☕">☕</option><option value="🛍️">🛍️</option><option value="✈️">✈️</option><option value="🚆">🚆</option><option value="🚌">🚌</option><option value="🚗">🚗</option><option value="🏨">🏨</option><option value="🏠">🏠</option>
+                        </select>
+                        <input id="in-name" type="text" placeholder="Place Name / Title" class="flex-grow p-2 md:p-3 border border-gray-200 rounded-xl bg-gray-50 outline-none font-medium">
+                        <div id="route-inputs" class="flex-grow flex gap-2 hidden">
+                            <input id="in-from" type="text" placeholder="From" class="w-1/2 p-2 md:p-3 border border-gray-200 rounded-xl bg-gray-50 outline-none font-medium"><div class="flex items-center text-gray-400">➜</div><input id="in-to" type="text" placeholder="To" class="w-1/2 p-2 md:p-3 border border-gray-200 rounded-xl bg-gray-50 outline-none font-medium">
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 p-3 md:p-4 rounded-xl border border-gray-100">
+                        <div class="grid grid-cols-2 md:grid-cols-2 gap-3 mb-3">
+                            <div><label class="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Start Date</label><input id="in-start-date" type="date" class="w-full p-2 border border-gray-200 rounded-lg text-sm outline-none bg-white"></div>
+                            <div><label class="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Start Time</label><input id="in-start-time" type="time" class="w-full p-2 border border-gray-200 rounded-lg text-sm outline-none bg-white"></div>
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-2 gap-3">
+                            <div><label class="block text-[10px] font-bold text-gray-400 mb-1 uppercase">End Date</label><input id="in-end-date" type="date" class="w-full p-2 border border-gray-200 rounded-lg text-sm outline-none bg-white"></div>
+                            <div><label class="block text-[10px] font-bold text-gray-400 mb-1 uppercase">End Time</label><input id="in-end-time" type="time" class="w-full p-2 border border-gray-200 rounded-lg text-sm outline-none bg-white"></div>
+                        </div>
+                    </div>
+                    <div><input id="in-link" type="text" placeholder="Google Map Link (URL)" class="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 outline-none text-sm text-blue-600"></div>
+                    <div><input id="in-note" type="text" placeholder="Note / Memo" class="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 outline-none text-sm"></div>
+                    <button onclick="addItem()" id="btn-add-item" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all">Add to Plan</button>
+                    <button onclick="cancelEdit()" id="btn-cancel-edit" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-600 py-3.5 rounded-xl font-bold hidden">Cancel Edit</button>
+                </div>
+            </div>
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="bg-gray-50 px-6 py-3 border-b border-gray-100 flex justify-between items-center"><span class="font-bold text-gray-600 text-sm">Item List</span></div>
+                <div id="edit-list" class="divide-y divide-gray-50"></div>
+            </div>
+        </div>
+    </main>
+
+    <main id="tab-budget" class="tab-content w-full flex-grow p-4 md:p-8 bg-gray-50">
+        <div class="max-w-4xl mx-auto space-y-6">
+            <div class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100">
+                <h3 class="font-bold text-gray-800 text-lg mb-4 flex items-center gap-2"><i data-lucide="calculator" class="w-5 h-5 text-indigo-600"></i> Smart Budget</h3>
+                <div class="mb-6 bg-indigo-50 p-4 rounded-xl border border-indigo-100 flex items-center justify-between">
+                    <div>
+                        <label class="block text-xs font-bold text-indigo-500 uppercase mb-1">Total Budget</label>
+                        <div class="flex items-center gap-2"><span class="text-xl font-bold text-indigo-700">₩</span><input type="number" id="smart-total" class="bg-transparent text-2xl font-black text-indigo-900 outline-none w-32 md:w-40 border-b border-indigo-300 focus:border-indigo-600" value="0" onchange="updateAllFromTotal()"></div>
+                        <div id="limit-sum-display" class="text-xs text-gray-400 mt-1">Allocated: 0</div>
+                    </div>
+                    <div class="text-right"><div class="text-xs font-bold text-gray-500 uppercase mb-1">Total Spent</div><div class="text-xl font-bold text-rose-500">₩ <span id="smart-spent">0</span></div></div>
+                </div>
+                
+                <div id="smart-budget-cards" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    </div>
+            </div>
+            
+            <section class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-gray-100">
+                <div class="flex justify-between items-center mb-4">
+                    <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2"><i data-lucide="credit-card" class="w-4 h-4 text-gray-500"></i> Transaction</h4>
+                    <button onclick="cancelEditExpense()" id="btn-cancel-exp" class="text-xs text-gray-500 underline hidden">Cancel Edit</button>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-12 gap-3">
+                    <div class="col-span-1 md:col-span-3"><label class="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Category</label><select id="exp-cat" class="w-full p-2 border rounded-lg text-sm bg-gray-50"></select></div>
+                    <div class="col-span-1 md:col-span-3"><label class="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Date</label><input id="exp-date" type="date" class="w-full p-2 border rounded-lg text-sm"></div>
+                    <div class="col-span-2 md:col-span-6"><label class="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Item</label><input id="exp-item" type="text" placeholder="e.g. Starbucks" class="w-full p-2 border rounded-lg text-sm"></div>
+                    <div class="col-span-1 md:col-span-3"><label class="block text-[10px] font-bold text-gray-400 mb-1 uppercase text-indigo-600">Cost (KRW)</label><input id="exp-cost" type="number" placeholder="0" class="w-full p-2 border border-indigo-200 rounded-lg text-sm font-bold text-right text-indigo-700 bg-indigo-50"></div>
+                    <div class="col-span-1 md:col-span-3"><label class="block text-[10px] font-bold text-gray-400 mb-1 uppercase">USD ($)</label><input id="exp-usd" type="number" placeholder="0" class="w-full p-2 border rounded-lg text-sm text-right"></div>
+                    <div class="col-span-1 md:col-span-3"><label class="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Payer</label><input id="exp-payer" type="text" placeholder="e.g. Me" class="w-full p-2 border rounded-lg text-sm"></div>
+                    <div class="col-span-1 md:col-span-3"><label class="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Method</label><select id="exp-method" class="w-full p-2 border rounded-lg text-sm bg-white"><option>Credit Card</option><option>Cash</option><option>Other</option></select></div>
+                    <div class="col-span-2 md:col-span-9"><label class="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Note</label><input id="exp-note" type="text" placeholder="..." class="w-full p-2 border rounded-lg text-sm"></div>
+                    <div class="col-span-2 md:col-span-3 flex items-end"><button onclick="addExpense()" id="btn-add-exp" class="w-full bg-indigo-600 text-white py-2 rounded-lg font-bold hover:bg-indigo-700 shadow-md transition-all">Add</button></div>
+                </div>
+            </section>
+            
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="bg-gray-50 px-5 py-3 border-b border-gray-100 flex justify-between items-center"><span class="font-bold text-gray-600 text-sm">Expense Log</span><button onclick="downloadCSV()" class="flex items-center gap-1 text-xs font-bold bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700 transition-colors"><i data-lucide="sheet" class="w-3 h-3"></i> CSV</button></div>
+                <div class="overflow-x-auto table-scroll"><table class="w-full text-sm min-w-[800px]"><thead class="bg-gray-50 text-gray-500 font-bold text-xs uppercase border-b border-gray-100"><tr><th class="py-3 px-4 text-left">Date</th><th class="py-3 px-4 text-left">Cat</th><th class="py-3 px-4 text-left w-1/4">Item</th><th class="py-3 px-4 text-right">KRW</th><th class="py-3 px-4 text-right">USD</th><th class="py-3 px-4 text-left">Payer</th><th class="py-3 px-4 text-left">Method</th><th class="py-3 px-4 text-left w-1/5">Note</th><th class="py-3 px-2 text-center" colspan="2">Actions</th></tr></thead><tbody id="expense-list" class="divide-y divide-gray-50"></tbody></table></div>
+            </div>
+        </div>
+    </main>
+
+    <div id="trip-modal" class="hidden fixed inset-0 z-[100] bg-black/60 items-center justify-center backdrop-blur-sm flex px-4">
+        <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4 flex-shrink-0">
+                <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2"><i data-lucide="folder-open" class="text-indigo-600"></i> My Trips</h2>
+                <button onclick="closeTripManager()" class="text-gray-400 hover:text-gray-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="mb-4 flex-grow overflow-y-auto">
+                <div class="text-xs font-bold text-gray-400 uppercase mb-2">Saved Trips (Cloud)</div>
+                <div id="trip-list" class="space-y-2 bg-gray-50 p-2 rounded-lg border border-gray-200">
+                    <div class="text-center text-gray-400 py-4 text-sm">Initializing...</div>
+                </div>
+            </div>
+            <div class="border-t pt-4 space-y-4 flex-shrink-0">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Create New Trip</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="new-trip-name" placeholder="Name (e.g. Tokyo 2025)" class="flex-grow p-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-200 outline-none">
+                        <button onclick="createNewTrip()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-1 hover:bg-indigo-700 flex-shrink-0"><i data-lucide="plus" class="w-4 h-4"></i> Create</button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Or Import JSON</label>
+                    <label class="w-full flex items-center justify-center gap-2 p-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer transition-colors">
+                        <i data-lucide="upload" class="w-4 h-4"></i> Load File to Cloud
+                        <input type="file" id="modal-file-loader" class="hidden" onchange="loadFromFile(this)">
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyD9d204Dz2ALB8nRZdSw8gn4R7uCAndKK8",
+            authDomain: "mytrip-ef669.firebaseapp.com",
+            projectId: "mytrip-ef669",
+            storageBucket: "mytrip-ef669.firebasestorage.app",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abcdef"
+        };
+
+        let db = null;
+        let currentTripId = null;
+        let unsubscribe = null;
+
+        let data = { tripName: "New Trip", totalBudget: 2000000, limits: {}, items: [], expenses: [] };
+        let editingId = null;
+        let editingExpenseId = null;
+        let activeFilter = 'all';
+        let currentType = 'activity';
+        let chartBudget = null;
+        const CATEGORIES = ['Food', 'Transport', 'Stay', 'Flight', 'Shopping', 'Activity', 'Other'];
+        
+        window.onload = function() {
+            try {
+                const app = firebase.initializeApp(firebaseConfig);
+                db = firebase.firestore();
+                console.log("Firebase Connected");
+                loadTripList();
+            } catch (e) {
+                console.error(e);
+                document.getElementById('trip-list').innerHTML = `<div class="text-center text-red-400 py-4 text-sm">Firebase Error<br>Check Key</div>`;
+            }
+
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('in-start-date').value = today;
+            document.getElementById('exp-date').value = today;
+            
+            const catSel = document.getElementById('exp-cat');
+            catSel.innerHTML = '';
+            CATEGORIES.forEach(c => catSel.innerHTML += `<option value="${c}">${c}</option>`);
+
+            updateUI();
+            lucide.createIcons();
+            
+            if(db) openTripManager();
+        };
+
+        // --- TRIP MANAGER ---
+        function openTripManager() { document.getElementById('trip-modal').classList.remove('hidden'); document.getElementById('trip-modal').classList.add('flex'); loadTripList(); }
+        function closeTripManager() { document.getElementById('trip-modal').classList.add('hidden'); document.getElementById('trip-modal').classList.remove('flex'); }
+        function toggleDataMenu() { document.getElementById('data-dropdown').classList.toggle('hidden'); }
+        window.onclick = function(event) { if (!event.target.closest('#btn-data-menu') && !event.target.closest('#data-dropdown')) { document.getElementById('data-dropdown').classList.add('hidden'); } }
+
+        function loadTripList() {
+            if(!db) return;
+            const listEl = document.getElementById('trip-list');
+            listEl.innerHTML = '<div class="text-center text-gray-400 py-4 text-sm">Loading...</div>';
+            db.collection("trips").get().then((querySnapshot) => {
+                listEl.innerHTML = '';
+                if (querySnapshot.empty) { listEl.innerHTML = '<div class="text-center text-gray-400 py-4 text-sm">No trips. Create one!</div>'; return; }
+                querySnapshot.forEach((doc) => {
+                    const t = doc.data();
+                    const isActive = doc.id === currentTripId ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:bg-gray-50';
+                    // Added Delete Button with stopPropagation
+                    listEl.innerHTML += `
+                        <div class="p-3 rounded-lg border flex justify-between items-center transition-all ${isActive}">
+                            <div onclick="loadTrip('${doc.id}', '${t.tripName}')" class="flex-grow cursor-pointer">
+                                <span class="font-bold text-gray-800 text-sm">${t.tripName||'Untitled'}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button onclick="loadTrip('${doc.id}', '${t.tripName}')" class="bg-white border border-gray-200 text-indigo-600 px-3 py-1 rounded text-xs font-bold hover:bg-indigo-600 hover:text-white transition-colors">LOAD</button>
+                                <button onclick="deleteTrip('${doc.id}', event)" class="p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500 rounded transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                            </div>
+                        </div>`;
+                });
+                lucide.createIcons();
+            });
+        }
+        function createNewTrip() {
+            const name = document.getElementById('new-trip-name').value;
+            if(!name) return alert("Enter Trip Name");
+            const newId = 'trip_' + Date.now();
+            db.collection("trips").doc(newId).set({ tripName: name, totalBudget: 2000000, limits: {}, items: [], expenses: [] }).then(() => { document.getElementById('new-trip-name').value = ''; loadTrip(newId, name); });
+        }
+        function loadTrip(id, name) {
+            currentTripId = id;
+            if (unsubscribe) unsubscribe();
+            unsubscribe = db.collection("trips").doc(id).onSnapshot((doc) => {
+                if (doc.exists) {
+                    data = { ...data, ...doc.data() };
+                    if(!data.limits) data.limits = {};
+                    CATEGORIES.forEach(c => { if(data.limits[c]===undefined) data.limits[c]=0; });
+                    updateUI();
+                }
+            });
+            closeTripManager();
+        }
+        function deleteTrip(id, event) {
+            event.stopPropagation();
+            if(confirm("Are you sure you want to permanently delete this trip?")) {
+                db.collection("trips").doc(id).delete().then(() => {
+                    loadTripList(); // Refresh List
+                    if(currentTripId === id) {
+                        // Reset if deleted current
+                        data = { tripName: "New Trip", totalBudget: 2000000, limits: {}, items: [], expenses: [] };
+                        currentTripId = null;
+                        if(unsubscribe) unsubscribe();
+                        updateUI();
+                        document.getElementById('current-trip-name').innerText = "Select Trip";
+                    }
+                });
+            }
+        }
+        
+        function save() { 
+            if(db && currentTripId) { 
+                data.tripName = document.getElementById('current-trip-name').innerText; 
+                db.collection("trips").doc(currentTripId).set(data).then(() => {
+                    loadTripList(); // Refresh list to update name there too
+                });
+            } 
+        }
+        function renameTrip() { 
+            const n = prompt("New Name:", data.tripName); 
+            if(n && n.trim() !== "") { 
+                data.tripName = n; 
+                document.getElementById('current-trip-name').innerText = n;
+                document.getElementById('sum-title').innerText = n;
+                save(); 
+            } 
+        }
+        function saveCopy() { const n = prompt("Name Copy:", data.tripName+"(Copy)"); if(n) { const id = 'trip_'+Date.now(); db.collection("trips").doc(id).set({...data, tripName:n}).then(()=>loadTrip(id,n)); } }
+        function saveToFile() { const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const l = document.createElement('a'); l.href = URL.createObjectURL(blob); l.download = "trip.json"; l.click(); }
+        function loadFromFile(input) { const r = new FileReader(); r.onload = e => { try { const j = JSON.parse(e.target.result); if(db) { const id='trip_'+Date.now(); j.tripName+="(File)"; db.collection("trips").doc(id).set(j).then(()=>loadTrip(id,j.tripName)); } else { data=j; updateUI(); } closeTripManager(); } catch(e){alert("Error");} }; r.readAsText(input.files[0]); }
+        function resetData() { if(confirm("Clear Data?")) { data.items=[]; data.expenses=[]; save(); updateUI(); } }
+
+        function updateUI() { renderJourney(); renderEditList(); renderSmartBudget(); renderSummary(); }
+
+        // --- TABS & FILTER ---
+        function switchTab(t) { document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active')); document.getElementById('tab-'+t).classList.add('active'); document.querySelectorAll('.tab-btn').forEach(b=>{b.classList.remove('bg-gray-100','text-gray-700');b.classList.add('text-gray-600')}); document.getElementById('btn-'+t).classList.remove('text-gray-600');document.getElementById('btn-'+t).classList.add('bg-gray-100','text-gray-700'); if(t==='summary'){ renderSummary(); } }
+        function toggleFilter(f) { activeFilter=f; document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active')); document.getElementById('fil-'+f).classList.add('active'); renderJourney(); }
+        
+        // --- JOURNEY ---
+        function calcDuration(d1,t1,d2,t2){if(!d1||!t1||!d2||!t2)return null;const s=new Date(`${d1}T${t1}`),e=new Date(`${d2}T${t2}`),diff=e-s;if(diff<=0)return null;const h=Math.floor(diff/36e5),m=Math.floor((diff%36e5)/6e4);return h>0?`${h}h ${m}m`:`${m}m`;}
+        function renderJourney() {
+            const c=document.getElementById('timeline-feed');c.innerHTML='';
+            if(!data.items.length){document.getElementById('journey-empty').classList.remove('hidden');return;}
+            document.getElementById('journey-empty').classList.add('hidden');
+            const dates=new Set();data.items.forEach(i=>{dates.add(i.startDate);if(i.endDate){let cur=new Date(i.startDate),end=new Date(i.endDate);while(cur<=end){dates.add(cur.toISOString().split('T')[0]);cur.setDate(cur.getDate()+1)}}});
+            Array.from(dates).sort().forEach(d=>{
+                const day=new Date(d).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+                const card=document.createElement('div');card.className="relative pl-8";
+                card.innerHTML=`<div class="absolute left-[15px] top-1 w-3 h-3 bg-gray-800 rounded-full border-2 border-gray-50 z-10"></div><div class="absolute left-[20px] top-4 bottom-[-48px] w-0.5 bg-gray-200"></div><h3 class="text-xl font-black text-gray-800 mb-4">${day}</h3>`;
+                const stays=data.items.filter(i=>i.type==='stay'&&i.startDate<=d&&i.endDate>=d);
+                if(stays.length&&(activeFilter==='all'||activeFilter==='stay')){stays.forEach(s=>{card.innerHTML+=`<div class="bg-orange-50 border border-orange-100 rounded-xl p-4 mb-6 flex justify-between shadow-sm"><div class="flex gap-3"><div class="text-2xl mt-1">${s.icon}</div><div><div class="text-xs font-bold text-orange-600 uppercase">Stay</div><div class="font-bold text-gray-800 text-lg">${s.name}</div></div></div>${s.link?`<a href="${s.link}" target="_blank" class="p-2 text-orange-500"><i data-lucide="map" class="w-4 h-4"></i></a>`:''}</div>`});}
+                let evs=data.items.filter(i=>(i.type!=='stay')&&i.startDate===d);
+                if(activeFilter!=='all')evs=evs.filter(i=>i.type===activeFilter);
+                evs.sort((a,b)=>(a.startTime||'').localeCompare(b.startTime||''));
+                const con=document.createElement('div');con.className="space-y-4";
+                evs.forEach(e=>{
+                    const dur=calcDuration(e.startDate,e.startTime,e.endDate,e.endTime), badge=dur?`<span class="ml-2 text-[10px] bg-gray-800 text-white px-1.5 py-0.5 rounded-full">${dur}</span>`:'';
+                    const isLog=e.type==='flight'||e.type==='transport';
+                    const col=e.type==='flight'?'blue':(e.type==='transport'?'emerald':'indigo');
+                    const title=isLog?`${e.from} ✈️ ${e.to}`:`${e.icon} ${e.name}`;
+                    let timeD = e.startTime||''; if(e.endTime) timeD += ` ➔ ${e.endTime}`;
+                    const bgIcon = e.icon; 
+                    con.innerHTML+=`<div class="bg-white border-l-4 border-${col}-500 rounded-r-xl shadow-sm p-4 hover:shadow-md transition-shadow group relative overflow-hidden"><div class="flex justify-between items-start z-10 relative"><div class="w-full"><div class="flex items-center gap-2 mb-2"><span class="font-mono text-xs font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded flex items-center">${timeD} ${badge}</span><span class="text-xs font-bold text-${col}-500 uppercase">${e.type}</span></div><div class="font-bold text-gray-800 text-lg flex items-center gap-2">${title}</div>${e.note?`<div class="text-xs text-gray-500 mt-1">${e.note}</div>`:''}</div><div class="flex items-center gap-1">${e.link?`<a href="${e.link}" target="_blank" class="p-1 text-gray-400 hover:text-indigo-600"><i data-lucide="map" class="w-4 h-4"></i></a>`:''}<button onclick="editItem(${e.id})" class="text-gray-300 hover:text-blue-500 p-1"><i data-lucide="pencil" class="w-4 h-4"></i></button><button onclick="deleteItem(${e.id})" class="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 p-1"><i data-lucide="x" class="w-4 h-4"></i></button></div></div>${isLog ? `<div class="absolute right-[-10px] bottom-[-10px] text-9xl text-${col}-50 opacity-10 pointer-events-none grayscale">${bgIcon}</div>` : ''}</div>`;
+                });
+                if(evs.length>0)card.appendChild(con);
+                if(evs.length>0||(stays.length>0&&(activeFilter==='all'||activeFilter==='stay')))c.appendChild(card);
+            });
+            lucide.createIcons();
+        }
+
+        // --- PLANNER EDIT ---
+        function clearInputs() { document.getElementById('in-name').value='';document.getElementById('in-from').value='';document.getElementById('in-to').value='';document.getElementById('in-link').value='';document.getElementById('in-note').value='';document.getElementById('in-start-time').value='';document.getElementById('in-end-time').value='';editingId=null;document.getElementById('btn-add-item').innerText="Add to Plan";document.getElementById('btn-cancel-edit').classList.add('hidden');document.getElementById('edit-form-title').innerText="Add Schedule"; }
+        function setType(t){ currentType=t;['activity','flight','transport','stay'].forEach(x=>{const b=document.getElementById('type-'+x);if(x===t){b.className="px-3 py-1.5 text-xs font-bold rounded-md bg-white shadow text-indigo-600 transition-all whitespace-nowrap flex-shrink-0";if(t==='flight')b.classList.add('text-blue-600');if(t==='transport')b.classList.add('text-emerald-600');if(t==='stay')b.classList.add('text-orange-600');}else b.className="px-3 py-1.5 text-xs font-bold rounded-md text-gray-500 hover:text-gray-900 transition-all whitespace-nowrap flex-shrink-0"});const i=document.getElementById('in-icon'),n=document.getElementById('in-name'),r=document.getElementById('route-inputs');if(t==='flight'||t==='transport'){i.value=t==='flight'?'✈️':'🚆';n.classList.add('hidden');r.classList.remove('hidden');r.classList.add('flex')}else{i.value=t==='stay'?'🏨':'📍';n.classList.remove('hidden');r.classList.remove('flex');r.classList.add('hidden');} clearInputs();}
+        function addItem() { const d=document.getElementById('in-start-date').value;let n=document.getElementById('in-name').value,f=document.getElementById('in-from').value,to=document.getElementById('in-to').value;if((currentType==='flight'||currentType==='transport')&&(!f||!to))return alert('Route needed');if(currentType!=='flight'&&currentType!=='transport'&&!n)return alert('Name needed');if(!d)return alert('Date needed');const item={id:editingId?editingId:Date.now(),type:currentType,icon:document.getElementById('in-icon').value,name:n||`${f} ✈️ ${to}`,from:f,to:to,link:document.getElementById('in-link').value,startDate:d,startTime:document.getElementById('in-start-time').value,endDate:document.getElementById('in-end-date').value||d,endTime:document.getElementById('in-end-time').value,note:document.getElementById('in-note').value};if(editingId){const idx=data.items.findIndex(i=>i.id===editingId);if(idx!==-1)data.items[idx]=item;}else{data.items.push(item);}save();clearInputs();}
+        function editItem(id) { const item=data.items.find(i=>i.id===id);if(!item)return;switchTab('planner');setType(item.type);document.getElementById('in-icon').value=item.icon;document.getElementById('in-name').value=item.name;document.getElementById('in-from').value=item.from||'';document.getElementById('in-to').value=item.to||'';document.getElementById('in-link').value=item.link||'';document.getElementById('in-note').value=item.note||'';document.getElementById('in-start-date').value=item.startDate;document.getElementById('in-start-time').value=item.startTime||'';document.getElementById('in-end-date').value=item.endDate||item.startDate;document.getElementById('in-end-time').value=item.endTime||'';editingId=id;document.getElementById('btn-add-item').innerText="Update Plan";document.getElementById('edit-form-title').innerText="Edit Schedule";document.getElementById('btn-cancel-edit').classList.remove('hidden'); }
+        function deleteItem(id) { if(confirm('Delete?')){data.items=data.items.filter(i=>i.id!==id);save();} }
+        function renderEditList(){ document.getElementById('edit-list').innerHTML=data.items.sort((a,b)=>a.startDate.localeCompare(b.startDate)).map(i=>{const title=(i.from&&i.to)?`${i.from} ✈️ ${i.to}`:i.name;return `<div class="p-4 hover:bg-gray-50 flex items-center gap-3"><div class="text-xl w-8 text-center">${i.icon}</div><div class="flex-grow"><div class="font-bold text-gray-800 text-sm">${title}</div><div class="text-xs text-gray-500">${i.startDate} ${i.startTime||''}</div></div><button onclick="editItem(${i.id})" class="text-gray-300 hover:text-blue-500 p-2"><i data-lucide="pencil" class="w-4 h-4"></i></button><button onclick="deleteItem(${i.id})" class="text-gray-300 hover:text-red-500 p-2"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>`}).join('');lucide.createIcons();}
+
+        // --- BUDGET LOGIC ---
+        function updateAllFromTotal() { data.totalBudget=parseInt(document.getElementById('smart-total').value)||0;save();renderSmartBudget(); }
+        function updateLimitFromPercent(c,v){data.limits[c]=Math.round(data.totalBudget*(parseFloat(v)||0)/100);save();}
+        function updatePercentFromLimit(c,v){data.limits[c]=parseInt(v)||0;save();}
+        
+        function renderSmartBudget(){
+            document.getElementById('smart-total').value = data.totalBudget;
+            let sumLimits = 0; CATEGORIES.forEach(c => sumLimits += (data.limits[c] || 0));
+            document.getElementById('limit-sum-display').innerText = `Allocated: ₩${sumLimits.toLocaleString()} / Total: ₩${data.totalBudget.toLocaleString()}`;
+            
+            let t=0; const s={};
+            data.expenses.forEach(e=>{s[e.cat]=(s[e.cat]||0)+e.cost; t+=e.cost});
+            document.getElementById('smart-spent').innerText = t.toLocaleString();
+            
+            const cardsContainer = document.getElementById('smart-budget-cards');
+            cardsContainer.innerHTML = '';
+            
+            CATEGORIES.forEach(c => {
+                const l = data.limits[c] || 0;
+                const p = data.totalBudget > 0 ? ((l/data.totalBudget)*100).toFixed(1) : 0;
+                const sp = s[c] || 0;
+                const ov = sp > l && l > 0;
+                let barPct = l > 0 ? Math.min((sp / l) * 100, 100) : 0;
+                let barColor = ov ? 'bg-rose-500' : (sp > l * 0.9 ? 'bg-orange-500' : 'bg-emerald-500');
+                if(sp===0) barPct=0;
+                
+                cardsContainer.innerHTML += `
+                    <div class="bg-white rounded-xl p-4 border border-gray-100 shadow-sm flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-bold text-gray-700 text-sm flex items-center gap-2">
+                                    <span class="w-2 h-2 rounded-full ${barColor}"></span> ${c}
+                                </span>
+                                <span class="text-xs font-mono font-bold ${ov?'text-rose-500':'text-gray-500'}">
+                                    ${sp.toLocaleString()} / ${l.toLocaleString()}
+                                </span>
+                            </div>
+                            <div class="w-full h-3 bg-gray-100 rounded-full overflow-hidden mb-3">
+                                <div class="h-full rounded-full ${barColor} transition-all duration-500" style="width:${barPct}%"></div>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 items-center bg-gray-50 p-2 rounded-lg">
+                            <div class="flex items-center gap-1 flex-1">
+                                <span class="text-[10px] text-gray-400 font-bold">SET %</span>
+                                <input type="number" class="w-full bg-transparent border-b border-gray-300 text-right text-xs font-bold outline-none focus:border-indigo-500" value="${p}" onchange="updateLimitFromPercent('${c}',this.value)">
+                            </div>
+                            <div class="w-px h-4 bg-gray-300"></div>
+                            <div class="flex items-center gap-1 flex-[1.5]">
+                                <span class="text-[10px] text-gray-400 font-bold">LIMIT</span>
+                                <input type="number" class="w-full bg-transparent border-b border-gray-300 text-right text-xs font-bold outline-none focus:border-indigo-500" value="${l}" onchange="updatePercentFromLimit('${c}',this.value)">
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('expense-list').innerHTML = data.expenses.sort((a,b)=>b.id-a.id).map(e => `
+                <tr class="hover:bg-gray-50 border-b border-gray-50">
+                    <td class="py-3 px-4 text-gray-500 whitespace-nowrap">${e.date}</td>
+                    <td class="py-3 px-4"><span class="px-2 py-1 bg-gray-100 rounded text-xs text-gray-600 font-bold">${e.cat}</span></td>
+                    <td class="py-3 px-4 font-bold text-gray-800">${e.name}</td>
+                    <td class="py-3 px-4 text-right font-mono text-gray-700">₩${e.cost.toLocaleString()}</td>
+                    <td class="py-3 px-4 text-right font-mono text-gray-500">${e.usd?'$'+e.usd:'-'}</td>
+                    <td class="py-3 px-4 text-gray-600">${e.payer||'-'}</td>
+                    <td class="py-3 px-4 text-gray-600">${e.method||'-'}</td>
+                    <td class="py-3 px-4 text-gray-400 text-xs italic truncate max-w-[150px]">${e.note||''}</td>
+                    <td class="py-3 px-1 text-center"><button onclick="editExpense(${e.id})" class="text-gray-300 hover:text-blue-500"><i data-lucide="pencil" class="w-3 h-3"></i></button></td>
+                    <td class="py-3 px-1 text-center"><button onclick="deleteExpense(${e.id})" class="text-gray-300 hover:text-red-500"><i data-lucide="x" class="w-3 h-3"></i></button></td>
+                </tr>`).join('');
+            
+            const totalSpent = data.expenses.reduce((a,c)=>a+c.cost,0);
+            const pct = data.totalBudget > 0 ? Math.round(((data.totalBudget-totalSpent)/data.totalBudget)*100) : 0;
+            document.getElementById('sum-remain-pct').innerText = pct + '%';
+            
+            const ctx = document.getElementById('sumChartBudget').getContext('2d');
+            if(chartBudget) chartBudget.destroy();
+            chartBudget = new Chart(ctx, { type: 'doughnut', data: { labels: ['Spent', 'Remaining'], datasets: [{ data: [totalSpent, Math.max(0, data.totalBudget-totalSpent)], backgroundColor: ['#e5e7eb', '#4f46e5'], borderWidth:0 }] }, options: { cutout: '75%', plugins: { legend: {display:false}, tooltip: {enabled:false} } } });
+            lucide.createIcons();
+        }
+
+        function addExpense(){ const i = { id: editingExpenseId ? editingExpenseId : Date.now(), cat: document.getElementById('exp-cat').value, name: document.getElementById('exp-item').value, date: document.getElementById('exp-date').value, cost: parseInt(document.getElementById('exp-cost').value), usd: parseFloat(document.getElementById('exp-usd').value), payer: document.getElementById('exp-payer').value, method: document.getElementById('exp-method').value, note: document.getElementById('exp-note').value }; if(!i.name || isNaN(i.cost)) return alert("Item Name and Cost are required."); if(editingExpenseId) { const idx = data.expenses.findIndex(e => e.id === editingExpenseId); if(idx !== -1) data.expenses[idx] = i; } else { data.expenses.push(i); } cancelEditExpense(); save(); renderSmartBudget(); }
+        function editExpense(id) { const exp = data.expenses.find(e => e.id === id); if(!exp) return; document.getElementById('exp-cat').value = exp.cat; document.getElementById('exp-date').value = exp.date; document.getElementById('exp-item').value = exp.name; document.getElementById('exp-cost').value = exp.cost; document.getElementById('exp-usd').value = exp.usd || ''; document.getElementById('exp-payer').value = exp.payer || ''; document.getElementById('exp-method').value = exp.method; document.getElementById('exp-note').value = exp.note || ''; editingExpenseId = id; const btn = document.getElementById('btn-add-exp'); btn.innerText = "Update"; btn.className = "w-full bg-green-600 text-white py-2 rounded-lg font-bold hover:bg-green-700 shadow-md transition-all"; document.getElementById('btn-cancel-exp').classList.remove('hidden'); document.querySelector('#tab-budget section').scrollIntoView({behavior: 'smooth'}); }
+        function cancelEditExpense() { editingExpenseId = null; document.getElementById('exp-item').value = ''; document.getElementById('exp-cost').value = ''; document.getElementById('exp-usd').value = ''; document.getElementById('exp-payer').value = ''; document.getElementById('exp-note').value = ''; const btn = document.getElementById('btn-add-exp'); btn.innerText = "Add"; btn.className = "w-full bg-indigo-600 text-white py-2 rounded-lg font-bold hover:bg-indigo-700 shadow-md transition-all"; document.getElementById('btn-cancel-exp').classList.add('hidden'); }
+        function deleteExpense(id){ if(confirm('Delete expense?')) { data.expenses=data.expenses.filter(e=>e.id!==id); if(editingExpenseId === id) cancelEditExpense(); save(); renderSmartBudget(); } }
+        function downloadCSV(){let c='\uFEFFCategory,Date,Item,KRW,USD,Payer,Method,Note\n';data.expenses.forEach(e=>{c+=`"${e.cat}","${e.date}","${e.name}",${e.cost},${e.usd||0},"${e.payer||''}","${e.method||''}","${e.note||''}"\n`});const b=new Blob([c],{type:'text/csv;charset=utf-8;'});const l=document.createElement("a");l.href=URL.createObjectURL(b);l.download="trip_expenses.csv";document.body.appendChild(l);l.click();document.body.removeChild(l);}
+
+        // --- DASHBOARD: DAY SLIDER LOGIC ---
+        function renderSummary() {
+            const dates = data.items.map(i => i.startDate).sort();
+            document.getElementById('sum-dates').innerText = dates.length ? `${dates[0]} ~ ${dates[dates.length-1]}` : 'Set dates';
+            document.getElementById('sum-title').innerText = data.tripName || "My Trip";
+            if(dates.length) {
+                const start = new Date(dates[0]); const today = new Date();
+                const diff = Math.ceil((start - today) / (1000*60*60*24));
+                document.getElementById('sum-dday').innerText = diff > 0 ? `D-${diff}` : (diff===0 ? 'D-Day' : `Day ${Math.abs(diff)+1}`);
+            }
+            const cnts = {activity:0, flight:0, stay:0};
+            data.items.forEach(i=>{ if(cnts[i.type]!==undefined) cnts[i.type]++; });
+            document.getElementById('cnt-flight').innerText = cnts.flight;
+            document.getElementById('cnt-stay').innerText = cnts.stay;
+            document.getElementById('cnt-activity').innerText = cnts.activity;
+            document.getElementById('sum-spent-total').innerText = data.expenses.reduce((a,c)=>a+c.cost,0).toLocaleString();
+            
+            const slider = document.getElementById('sum-day-slider');
+            slider.innerHTML = '';
+            
+            const grouped = {};
+            data.items.forEach(i => {
+                if(!grouped[i.startDate]) grouped[i.startDate] = [];
+                grouped[i.startDate].push(i);
+            });
+            const sortedDates = Object.keys(grouped).sort();
+            
+            if(sortedDates.length === 0) {
+                 slider.innerHTML = '<span class="text-gray-400 italic text-sm w-full text-center py-4">Add your schedule to see the daily flow.</span>';
+                 return;
+            }
+
+            sortedDates.forEach((date, idx) => {
+                const dayItems = grouped[date];
+                const dateObj = new Date(date);
+                const dayStr = dateObj.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+                const weekday = dateObj.toLocaleDateString('en-US', {weekday:'short'});
+                
+                let iconsHtml = '';
+                dayItems.slice(0,3).forEach(item => {
+                    let color = 'text-gray-600';
+                    if(item.type==='flight') color='text-blue-500';
+                    if(item.type==='stay') color='text-orange-500';
+                    if(item.type==='activity') color='text-indigo-500';
+                    iconsHtml += `<span class="${color} text-lg">${item.icon}</span>`;
+                });
+                if(dayItems.length > 3) iconsHtml += `<span class="text-xs text-gray-400 font-bold ml-1">+${dayItems.length-3}</span>`;
+
+                slider.innerHTML += `
+                    <div class="day-card flex flex-col items-center gap-3 group cursor-pointer" onclick="switchTab('journey')">
+                        <div class="day-connector"></div>
+                        <div class="font-bold text-gray-400 text-xs uppercase tracking-wider">Day ${idx+1}</div>
+                        <div class="w-16 h-16 rounded-full bg-white border-2 border-indigo-100 shadow-sm flex items-center justify-center flex-col z-10 group-hover:border-indigo-500 transition-colors">
+                            <div class="flex gap-0.5 justify-center flex-wrap px-2">${iconsHtml}</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="font-bold text-gray-800 text-sm">${dayStr}</div>
+                            <div class="text-[10px] text-gray-400 uppercase">${weekday}</div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+    </script>
+</body>
+</html>
+
