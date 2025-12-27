@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Trip Planner v0.34 (Fixes)</title>
+    <title>Trip Planner </title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -149,12 +149,70 @@
                 <div class="bento-card md:col-span-4 p-5 md:p-6 bg-white">
                     <div class="flex justify-between items-center mb-6">
                         <div class="text-xs font-bold text-gray-400 uppercase flex items-center gap-2"><i data-lucide="milestone" class="w-4 h-4"></i> Day by Day</div>
-                        <div class="text-xs text-gray-300">Scroll ➜</div>
+                        <div class="text-xs text-gray-300">Tap to Jump ➜</div>
                     </div>
                     <div class="flex items-center gap-6 overflow-x-auto pb-6 pt-2 touch-pan-x snap-x" id="sum-day-slider">
                         <span class="text-gray-400 italic text-sm w-full text-center py-4">Add your schedule to see the daily flow.</span>
                     </div>
                 </div>
+
+                <div class="bento-card md:col-span-4 p-5 md:p-6 bg-white">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="flex flex-col justify-center gap-4">
+                            <div class="flex justify-between items-start">
+                                <div class="text-xs font-bold text-gray-400 uppercase flex items-center gap-2"><i data-lucide="globe" class="w-4 h-4"></i> Destination</div>
+                                <select id="dest-select" onchange="changeDestination()" class="text-xs font-bold p-1 rounded border bg-gray-50 outline-none text-indigo-600">
+                                    <option value="custom">Custom</option>
+                                    <option value="US_WA">Seattle (USA)</option>
+                                    <option value="US_NY">New York (USA)</option>
+                                    <option value="JP">Tokyo (Japan)</option>
+                                    <option value="EU">Paris (Europe)</option>
+                                    <option value="UK">London (UK)</option>
+                                    <option value="VN">Hanoi (Vietnam)</option>
+                                    <option value="TH">Bangkok (Thai)</option>
+                                </select>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="bg-gray-50 rounded-lg p-3 border border-gray-100 text-center">
+                                    <div class="text-[10px] font-bold text-gray-400 uppercase mb-1">Local (Here)</div>
+                                    <div class="text-xl font-black text-indigo-600" id="clock-local">--:--</div>
+                                    <div class="text-[10px] text-gray-500" id="date-local">-</div>
+                                </div>
+                                <div class="bg-gray-50 rounded-lg p-3 border border-gray-100 text-center opacity-60">
+                                    <div class="text-[10px] font-bold text-gray-400 uppercase mb-1">Home (Seoul)</div>
+                                    <div class="text-xl font-bold text-gray-600" id="clock-home">--:--</div>
+                                    <div class="text-[10px] text-gray-500" id="date-home">-</div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center justify-between bg-indigo-50 p-3 rounded-lg border border-indigo-100">
+                                <span class="text-xs font-bold text-indigo-400 uppercase">Rate (1<span id="cur-symbol">$</span>)</span>
+                                <div class="flex items-center gap-2">
+                                    <input type="number" id="calc-rate" value="1450" class="w-20 bg-transparent text-lg font-black text-indigo-700 outline-none border-b border-indigo-200 focus:border-indigo-600 text-right" oninput="runCalc()">
+                                    <span class="text-xs font-bold text-indigo-400">KRW</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gray-50 rounded-xl p-4 border border-gray-100 flex flex-col justify-center">
+                            <div class="text-xs font-bold text-gray-400 uppercase mb-3 flex items-center gap-2"><i data-lucide="coins" class="w-4 h-4"></i> Quick Converter</div>
+                            <div class="space-y-3">
+                                <div class="flex items-center gap-3">
+                                    <span class="w-10 text-sm font-bold text-gray-500 text-center" id="lbl-for">USD</span>
+                                    <input type="number" id="calc-usd" placeholder="0" class="flex-grow p-2 border border-gray-200 rounded-lg text-lg font-bold text-gray-800 outline-none focus:ring-2 focus:ring-indigo-100" onkeyup="calcToKrw()">
+                                </div>
+                                <div class="flex items-center justify-center text-gray-300"><i data-lucide="arrow-down-up" class="w-4 h-4"></i></div>
+                                <div class="flex items-center gap-3">
+                                    <span class="w-10 text-sm font-bold text-gray-500 text-center">KRW</span>
+                                    <input type="number" id="calc-krw" placeholder="0" class="flex-grow p-2 border border-gray-200 rounded-lg text-lg font-bold text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-100" onkeyup="calcToUsd()">
+                                </div>
+                            </div>
+                            <div class="text-[10px] text-gray-400 text-center mt-3">* Rates via open.er-api.com</div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </main>
@@ -305,13 +363,25 @@
         let currentTripId = null;
         let unsubscribe = null;
 
-        let data = { tripName: "New Trip", totalBudget: 2000000, limits: {}, items: [], expenses: [] };
+        let data = { tripName: "New Trip", totalBudget: 2000000, limits: {}, items: [], expenses: [], destCode: 'US_WA' };
         let editingId = null;
         let editingExpenseId = null;
         let activeFilter = 'all';
         let currentType = 'activity';
         let chartBudget = null;
         const CATEGORIES = ['Food', 'Transport', 'Stay', 'Flight', 'Shopping', 'Activity', 'Other'];
+
+        // DESTINATION PRESETS
+        const DESTINATIONS = {
+            'custom': { name: 'Custom', zone: 'Asia/Seoul', cur: 'USD', symbol: '$' },
+            'US_WA': { name: 'Seattle (USA)', zone: 'America/Los_Angeles', cur: 'USD', symbol: '$' },
+            'US_NY': { name: 'New York (USA)', zone: 'America/New_York', cur: 'USD', symbol: '$' },
+            'JP': { name: 'Tokyo (Japan)', zone: 'Asia/Tokyo', cur: 'JPY', symbol: '¥' },
+            'EU': { name: 'Paris (Europe)', zone: 'Europe/Paris', cur: 'EUR', symbol: '€' },
+            'UK': { name: 'London (UK)', zone: 'Europe/London', cur: 'GBP', symbol: '£' },
+            'VN': { name: 'Hanoi (Vietnam)', zone: 'Asia/Bangkok', cur: 'VND', symbol: '₫' }, // Bangkok/Hanoi same zone
+            'TH': { name: 'Bangkok (Thai)', zone: 'Asia/Bangkok', cur: 'THB', symbol: '฿' }
+        };
         
         window.onload = function() {
             try {
@@ -332,11 +402,79 @@
             catSel.innerHTML = '';
             CATEGORIES.forEach(c => catSel.innerHTML += `<option value="${c}">${c}</option>`);
 
+            // Load default rate
+            changeDestination(false); // false = don't save yet, just init
+            
             updateUI();
+            startClock();
             lucide.createIcons();
             
             if(db) openTripManager();
         };
+
+        // --- CALC, CLOCK & API ---
+        function startClock() {
+            setInterval(() => {
+                const now = new Date();
+                // Home: Seoul
+                document.getElementById('clock-home').innerText = now.toLocaleTimeString('en-US', {hour12:false, hour:'2-digit', minute:'2-digit', timeZone: 'Asia/Seoul'});
+                document.getElementById('date-home').innerText = now.toLocaleDateString('en-US', {month:'short', day:'numeric', timeZone: 'Asia/Seoul'});
+                
+                // Local: Selected
+                const dest = DESTINATIONS[document.getElementById('dest-select').value] || DESTINATIONS['custom'];
+                try {
+                    document.getElementById('clock-local').innerText = now.toLocaleTimeString('en-US', {hour12:false, hour:'2-digit', minute:'2-digit', timeZone: dest.zone});
+                    document.getElementById('date-local').innerText = now.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric', timeZone: dest.zone});
+                } catch(e) {
+                    document.getElementById('clock-local').innerText = "--:--";
+                }
+            }, 1000);
+        }
+
+        async function fetchRate(currency) {
+            if(currency === 'KRW') return 1;
+            try {
+                // Free API: open.er-api.com
+                const res = await fetch(`https://open.er-api.com/v6/latest/${currency}`);
+                const json = await res.json();
+                if(json && json.rates && json.rates.KRW) {
+                    return json.rates.KRW;
+                }
+            } catch(e) { console.error("API Error", e); }
+            return null;
+        }
+
+        async function changeDestination(doSave = true) {
+            const code = document.getElementById('dest-select').value;
+            const dest = DESTINATIONS[code] || DESTINATIONS['custom'];
+            
+            data.destCode = code; // Update data model
+            
+            // Update UI Symbols
+            document.getElementById('cur-symbol').innerText = dest.symbol;
+            document.getElementById('lbl-for').innerText = dest.cur;
+            
+            // Auto fetch rate if not custom (or even if custom, if we implemented custom cur)
+            if(code !== 'custom') {
+                const rate = await fetchRate(dest.cur);
+                if(rate) {
+                    document.getElementById('calc-rate').value = Math.round(rate);
+                }
+            }
+            if(doSave) save();
+        }
+
+        function runCalc() { calcToKrw(); }
+        function calcToKrw() {
+            const r = parseFloat(document.getElementById('calc-rate').value) || 0;
+            const u = parseFloat(document.getElementById('calc-usd').value) || 0;
+            document.getElementById('calc-krw').value = Math.round(u * r);
+        }
+        function calcToUsd() {
+            const r = parseFloat(document.getElementById('calc-rate').value) || 0;
+            const k = parseFloat(document.getElementById('calc-krw').value) || 0;
+            if(r>0) document.getElementById('calc-usd').value = (k / r).toFixed(2);
+        }
 
         // --- TRIP MANAGER ---
         function openTripManager() { document.getElementById('trip-modal').classList.remove('hidden'); document.getElementById('trip-modal').classList.add('flex'); loadTripList(); }
@@ -354,7 +492,6 @@
                 querySnapshot.forEach((doc) => {
                     const t = doc.data();
                     const isActive = doc.id === currentTripId ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:bg-gray-50';
-                    // Added Delete Button with stopPropagation
                     listEl.innerHTML += `
                         <div class="p-3 rounded-lg border flex justify-between items-center transition-all ${isActive}">
                             <div onclick="loadTrip('${doc.id}', '${t.tripName}')" class="flex-grow cursor-pointer">
@@ -373,7 +510,7 @@
             const name = document.getElementById('new-trip-name').value;
             if(!name) return alert("Enter Trip Name");
             const newId = 'trip_' + Date.now();
-            db.collection("trips").doc(newId).set({ tripName: name, totalBudget: 2000000, limits: {}, items: [], expenses: [] }).then(() => { document.getElementById('new-trip-name').value = ''; loadTrip(newId, name); });
+            db.collection("trips").doc(newId).set({ tripName: name, totalBudget: 2000000, limits: {}, items: [], expenses: [], destCode: 'US_WA' }).then(() => { document.getElementById('new-trip-name').value = ''; loadTrip(newId, name); });
         }
         function loadTrip(id, name) {
             currentTripId = id;
@@ -382,6 +519,7 @@
                 if (doc.exists) {
                     data = { ...data, ...doc.data() };
                     if(!data.limits) data.limits = {};
+                    if(!data.destCode) data.destCode = 'US_WA'; // Default legacy
                     CATEGORIES.forEach(c => { if(data.limits[c]===undefined) data.limits[c]=0; });
                     updateUI();
                 }
@@ -394,8 +532,7 @@
                 db.collection("trips").doc(id).delete().then(() => {
                     loadTripList(); // Refresh List
                     if(currentTripId === id) {
-                        // Reset if deleted current
-                        data = { tripName: "New Trip", totalBudget: 2000000, limits: {}, items: [], expenses: [] };
+                        data = { tripName: "New Trip", totalBudget: 2000000, limits: {}, items: [], expenses: [], destCode: 'US_WA' };
                         currentTripId = null;
                         if(unsubscribe) unsubscribe();
                         updateUI();
@@ -427,7 +564,13 @@
         function loadFromFile(input) { const r = new FileReader(); r.onload = e => { try { const j = JSON.parse(e.target.result); if(db) { const id='trip_'+Date.now(); j.tripName+="(File)"; db.collection("trips").doc(id).set(j).then(()=>loadTrip(id,j.tripName)); } else { data=j; updateUI(); } closeTripManager(); } catch(e){alert("Error");} }; r.readAsText(input.files[0]); }
         function resetData() { if(confirm("Clear Data?")) { data.items=[]; data.expenses=[]; save(); updateUI(); } }
 
-        function updateUI() { renderJourney(); renderEditList(); renderSmartBudget(); renderSummary(); }
+        function updateUI() { 
+            // Update Destination Select based on loaded data
+            document.getElementById('dest-select').value = data.destCode || 'US_WA';
+            changeDestination(false); // Update visuals without saving again
+
+            renderJourney(); renderEditList(); renderSmartBudget(); renderSummary(); 
+        }
 
         // --- TABS & FILTER ---
         function switchTab(t) { document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active')); document.getElementById('tab-'+t).classList.add('active'); document.querySelectorAll('.tab-btn').forEach(b=>{b.classList.remove('bg-gray-100','text-gray-700');b.classList.add('text-gray-600')}); document.getElementById('btn-'+t).classList.remove('text-gray-600');document.getElementById('btn-'+t).classList.add('bg-gray-100','text-gray-700'); if(t==='summary'){ renderSummary(); } }
@@ -443,6 +586,7 @@
             Array.from(dates).sort().forEach(d=>{
                 const day=new Date(d).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
                 const card=document.createElement('div');card.className="relative pl-8";
+                card.id = `journey-date-${d}`;
                 card.innerHTML=`<div class="absolute left-[15px] top-1 w-3 h-3 bg-gray-800 rounded-full border-2 border-gray-50 z-10"></div><div class="absolute left-[20px] top-4 bottom-[-48px] w-0.5 bg-gray-200"></div><h3 class="text-xl font-black text-gray-800 mb-4">${day}</h3>`;
                 const stays=data.items.filter(i=>i.type==='stay'&&i.startDate<=d&&i.endDate>=d);
                 if(stays.length&&(activeFilter==='all'||activeFilter==='stay')){stays.forEach(s=>{card.innerHTML+=`<div class="bg-orange-50 border border-orange-100 rounded-xl p-4 mb-6 flex justify-between shadow-sm"><div class="flex gap-3"><div class="text-2xl mt-1">${s.icon}</div><div><div class="text-xs font-bold text-orange-600 uppercase">Stay</div><div class="font-bold text-gray-800 text-lg">${s.name}</div></div></div>${s.link?`<a href="${s.link}" target="_blank" class="p-2 text-orange-500"><i data-lucide="map" class="w-4 h-4"></i></a>`:''}</div>`});}
@@ -498,6 +642,7 @@
                 let barPct = l > 0 ? Math.min((sp / l) * 100, 100) : 0;
                 let barColor = ov ? 'bg-rose-500' : (sp > l * 0.9 ? 'bg-orange-500' : 'bg-emerald-500');
                 if(sp===0) barPct=0;
+                const usedPct = l > 0 ? Math.round((sp / l) * 100) : 0;
                 
                 cardsContainer.innerHTML += `
                     <div class="bg-white rounded-xl p-4 border border-gray-100 shadow-sm flex flex-col justify-between">
@@ -507,7 +652,7 @@
                                     <span class="w-2 h-2 rounded-full ${barColor}"></span> ${c}
                                 </span>
                                 <span class="text-xs font-mono font-bold ${ov?'text-rose-500':'text-gray-500'}">
-                                    ${sp.toLocaleString()} / ${l.toLocaleString()}
+                                    ${sp.toLocaleString()} / ${l.toLocaleString()} <span class="text-xs text-gray-400">(${usedPct}%)</span>
                                 </span>
                             </div>
                             <div class="w-full h-3 bg-gray-100 rounded-full overflow-hidden mb-3">
@@ -559,7 +704,16 @@
         function deleteExpense(id){ if(confirm('Delete expense?')) { data.expenses=data.expenses.filter(e=>e.id!==id); if(editingExpenseId === id) cancelEditExpense(); save(); renderSmartBudget(); } }
         function downloadCSV(){let c='\uFEFFCategory,Date,Item,KRW,USD,Payer,Method,Note\n';data.expenses.forEach(e=>{c+=`"${e.cat}","${e.date}","${e.name}",${e.cost},${e.usd||0},"${e.payer||''}","${e.method||''}","${e.note||''}"\n`});const b=new Blob([c],{type:'text/csv;charset=utf-8;'});const l=document.createElement("a");l.href=URL.createObjectURL(b);l.download="trip_expenses.csv";document.body.appendChild(l);l.click();document.body.removeChild(l);}
 
-        // --- DASHBOARD: DAY SLIDER LOGIC ---
+        // --- DASHBOARD & JUMP ---
+        function goToJourneyDate(date) {
+            toggleFilter('all'); 
+            switchTab('journey');
+            setTimeout(() => {
+                const el = document.getElementById(`journey-date-${date}`);
+                if(el) el.scrollIntoView({behavior: 'smooth', block: 'start'});
+            }, 50);
+        }
+
         function renderSummary() {
             const dates = data.items.map(i => i.startDate).sort();
             document.getElementById('sum-dates').innerText = dates.length ? `${dates[0]} ~ ${dates[dates.length-1]}` : 'Set dates';
@@ -608,7 +762,7 @@
                 if(dayItems.length > 3) iconsHtml += `<span class="text-xs text-gray-400 font-bold ml-1">+${dayItems.length-3}</span>`;
 
                 slider.innerHTML += `
-                    <div class="day-card flex flex-col items-center gap-3 group cursor-pointer" onclick="switchTab('journey')">
+                    <div class="day-card flex flex-col items-center gap-3 group cursor-pointer" onclick="goToJourneyDate('${date}')">
                         <div class="day-connector"></div>
                         <div class="font-bold text-gray-400 text-xs uppercase tracking-wider">Day ${idx+1}</div>
                         <div class="w-16 h-16 rounded-full bg-white border-2 border-indigo-100 shadow-sm flex items-center justify-center flex-col z-10 group-hover:border-indigo-500 transition-colors">
