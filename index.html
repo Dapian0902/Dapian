@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Trip Planner </title>
+    <title>Trip Planner v1.0 </title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -246,7 +246,33 @@
                 <div class="space-y-4">
                     <div class="flex gap-2">
                         <select id="in-icon" class="w-16 md:w-24 p-2 md:p-3 border border-gray-200 rounded-xl text-xl md:text-2xl bg-gray-50 text-center outline-none">
-                            <option value="📍">📍</option><option value="📷">📷</option><option value="🍔">🍔</option><option value="☕">☕</option><option value="🛍️">🛍️</option><option value="✈️">✈️</option><option value="🚆">🚆</option><option value="🚌">🚌</option><option value="🚗">🚗</option><option value="🏨">🏨</option><option value="🏠">🏠</option>
+                            <optgroup label="Place & View">
+                                <option value="📍">📍</option><option value="🗺️">🗺️</option><option value="🏙️">🏙️</option><option value="🏞️">🏞️</option><option value="🏖️">🏖️</option><option value="🎢">🎢</option><option value="🎡">🎡</option><option value="🏟️">🏟️</option><option value="🏰">🏰</option><option value="🗼">🗼</option><option value="🗽">🗽</option><option value="🌉">🌉</option><option value="🏛️">🏛️</option><option value="⛪">⛪</option><option value="🕍">🕍</option><option value="⛩️">⛩️</option><option value="🕋">🕋</option><option value="⛲">⛲</option><option value="⛺">⛺</option>
+                            </optgroup>
+                            <optgroup label="Activity & Sports">
+                                <option value="🏀">🏀</option><option value="⚽">⚽</option><option value="⚾">⚾</option><option value="🎾">🎾</option><option value="🏐">🏐</option><option value="🏈">🏈</option><option value="🏉">🏉</option><option value="🎱">🎱</option><option value="🏓">🏓</option><option value="🏸">🏸</option><option value="🥊">🥊</option><option value="🥋">🥋</option><option value="🥅">🥅</option><option value="🏹">🏹</option><option value="⛳">⛳</option><option value="⛸️">⛸️</option><option value="🎣">🎣</option><option value="🤿">🤿</option><option value="🧗">🧗</option><option value="🚴">🚴</option><option value="🏋️">🏋️</option><option value="🤸">🤸</option><option value="🏃">🏃</option><option value="🧖‍♀️">🧖‍♀️</option><option value="🏊">🏊</option><option value="🏄">🏄</option>
+                            </optgroup>
+                            <optgroup label="Entertainment & Relax">
+                                <option value="📚">📚</option><option value="📖">📖</option><option value="📷">📷</option><option value="🎨">🎨</option><option value="🎭">🎭</option><option value="🎟️">🎟️</option><option value="🎤">🎤</option><option value="🎧">🎧</option><option value="🎼">🎼</option><option value="🎹">🎹</option><option value="🎷">🎷</option><option value="🎺">🎺</option><option value="🎸">🎸</option><option value="🎻">🎻</option><option value="🎬">🎬</option><option value="🎮">🎮</option><option value="🎰">🎰</option><option value="🧩">🧩</option><option value="🎲">🎲</option>
+                            </optgroup>
+                            <optgroup label="Food & Drink">
+                                <option value="🍔">🍔</option><option value="🍕">🍕</option><option value="🍣">🍣</option><option value="🍜">🍜</option><option value="🥩">🥩</option><option value="☕">☕</option><option value="🍺">🍺</option><option value="🍷">🍷</option><option value="🍰">🍰</option><option value="🥐">🥐</option><option value="🥨">🥨</option><option value="🥯">🥯</option><option value="🥞">🥞</option><option value="🧀">🧀</option><option value="🍖">🍖</option><option value="🍗">🍗</option><option value="🍟">🍟</option><option value="🌭">🌭</option><option value="🥪">🥪</option><option value="🌮">🌮</option><option value="🌯">🌯</option><option value="🥗">🥗</option><option value="🍿">🍿</option><option value="🍱">🍱</option><option value="🍚">🍚</option><option value="🍛">🍛</option><option value="🍢">🍢</option><option value="🍡">🍡</option><option value="🍧">🍧</option><option value="🍨">🍨</option><option value="🍩">🍩</option><option value="🍪">🍪</option><option value="🎂">🎂</option><option value="🧁">🧁</option><option value="🍫">🍫</option><option value="🍬">🍬</option><option value="🍭">🍭</option><option value="🍮">🍮</option><option value="🍯">🍯</option><option value="🍼">🍼</option><option value="🥛">🥛</option><option value="🍵">🍵</option><option value="🍶">🍶</option><option value="🍾">🍾</option><option value="🍸">🍸</option><option value="🍹">🍹</option><option value="🥂">🥂</option><option value="🥃">🥃</option><option value="🥤">🥤</option>
+                            </optgroup>
+                            <optgroup label="Shopping & Needs">
+                                <option value="🛍️">🛍️</option><option value="🛒">🛒</option><option value="🎁">🎁</option><option value="🕶️">🕶️</option><option value="👔">👔</option><option value="👕">👕</option><option value="👖">👖</option><option value="👗">👗</option><option value="👘">👘</option><option value="👙">👙</option><option value="👚">👚</option><option value="👛">👛</option><option value="👜">👜</option><option value="👝">👝</option><option value="🎒">🎒</option><option value="👞">👞</option><option value="👟">👟</option><option value="👠">👠</option><option value="👡">👡</option><option value="👢">👢</option><option value="👑">👑</option><option value="🧢">🧢</option><option value="💄">💄</option><option value="💍">💍</option><option value="💎">💎</option><option value="💊">💊</option><option value="🩹">🩹</option><option value="🧴">🧴</option><option value="📱">📱</option><option value="🔋">🔋</option><option value="💸">💸</option><option value="💳">💳</option>
+                            </optgroup>
+                            <optgroup label="Stay & Rest">
+                                <option value="🏨">🏨</option><option value="🏠">🏠</option><option value="🛌">🛌</option><option value="🛁">🛁</option><option value="🛋️">🛋️</option><option value="🛏️">🛏️</option>
+                            </optgroup>
+                            <optgroup label="Transport">
+                                <option value="✈️">✈️</option><option value="🚆">🚆</option><option value="🚌">🚌</option><option value="🚗">🚗</option><option value="🚕">🚕</option><option value="🛳️">🛳️</option><option value="🚲">🚲</option><option value="🚶">🚶</option><option value="🛵">🛵</option><option value="🏍️">🏍️</option><option value="🚔">🚔</option><option value="🚐">🚐</option><option value="🚚">🚚</option><option value="🏎️">🏎️</option><option value="🚄">🚄</option><option value="🚅">🚅</option><option value="🚈">🚈</option><option value="🚂">🚂</option><option value="🚝">🚝</option><option value="🚞">🚞</option><option value="🚋">🚋</option><option value="🚤">🚤</option><option value="⛴️">⛴️</option><option value="🛥️">🛥️</option><option value="🚢">🚢</option><option value="🚁">🚁</option><option value="🚡">🚡</option><option value="🚠">🚠</option><option value="🚟">🚟</option><option value="⛽">⛽</option><option value="🚧">🚧</option><option value="🚦">🚦</option>
+                            </optgroup>
+                            <optgroup label="Nature & Weather">
+                                <option value="🌲">🌲</option><option value="🌳">🌳</option><option value="🌴">🌴</option><option value="🌵">🌵</option><option value="🌷">🌷</option><option value="🌸">🌸</option><option value="🌹">🌹</option><option value="🌺">🌺</option><option value="🌻">🌻</option><option value="🌼">🌼</option><option value="🍁">🍁</option><option value="🍂">🍂</option><option value="🍃">🍃</option><option value="🍄">🍄</option><option value="🪨">🪨</option><option value="🪵">🪵</option><option value="🔥">🔥</option><option value="🌊">🌊</option><option value="☀️">☀️</option><option value="🌤️">🌤️</option><option value="⛅">⛅</option><option value="☁️">☁️</option><option value="🌦️">🌦️</option><option value="🌧️">🌧️</option><option value="⛈️">⛈️</option><option value="🌩️">🌩️</option><option value="🌨️">🌨️</option><option value="❄️">❄️</option><option value="☃️">☃️</option><option value="💨">💨</option><option value="🌈">🌈</option><option value="☔">☔</option><option value="⚡">⚡</option>
+                            </optgroup>
+                            <optgroup label="Animals">
+                                <option value="🐶">🐶</option><option value="🐱">🐱</option><option value="🐭">🐭</option><option value="🐹">🐹</option><option value="🐰">🐰</option><option value="🦊">🦊</option><option value="🐻">🐻</option><option value="🐼">🐼</option><option value="🐨">🐨</option><option value="🐯">🐯</option><option value="🦁">🦁</option><option value="🐮">🐮</option><option value="🐷">🐷</option><option value="🐸">🐸</option><option value="🐵">🐵</option><option value="🐔">🐔</option><option value="🐧">🐧</option><option value="🐦">🐦</option><option value="🐤">🐤</option><option value="🦆">🦆</option><option value="🦅">🦅</option><option value="🦉">🦉</option><option value="🦇">🦇</option><option value="🐺">🐺</option><option value="🐗">🐗</option><option value="🐴">🐴</option><option value="🦄">🦄</option><option value="🐝">🐝</option><option value="🐛">🐛</option><option value="🦋">🦋</option><option value="🐌">🐌</option><option value="🐢">🐢</option><option value="🐍">🐍</option><option value="🦎">🦎</option><option value="🦖">🦖</option><option value="🦕">🦕</option><option value="🐙">🐙</option><option value="🦑">🦑</option><option value="🦐">🦐</option><option value="🦞">🦞</option><option value="🦀">🦀</option><option value="🐡">🐡</option><option value="🐠">🐠</option><option value="🐟">🐟</option><option value="🐬">🐬</option><option value="🐳">🐳</option><option value="🐋">🐋</option><option value="🦈">🦈</option><option value="🐊">🐊</option><option value="🐅">🐅</option><option value="🐆">🐆</option><option value="🦓">🦓</option><option value="🦍">🦍</option><option value="🦧">🦧</option><option value="🐘">🐘</option><option value="🦛">🦛</option><option value="🦏">🦏</option><option value="🐪">🐪</option><option value="🐫">🐫</option><option value="🦒">🦒</option><option value="🦘">🦘</option>
+                            </optgroup>
                         </select>
                         <input id="in-name" type="text" placeholder="Place Name / Title" class="flex-grow p-2 md:p-3 border border-gray-200 rounded-xl bg-gray-50 outline-none font-medium">
                         <div id="route-inputs" class="flex-grow flex gap-2 hidden">
@@ -379,7 +405,7 @@
             'JP': { name: 'Tokyo (Japan)', zone: 'Asia/Tokyo', cur: 'JPY', symbol: '¥' },
             'EU': { name: 'Paris (Europe)', zone: 'Europe/Paris', cur: 'EUR', symbol: '€' },
             'UK': { name: 'London (UK)', zone: 'Europe/London', cur: 'GBP', symbol: '£' },
-            'VN': { name: 'Hanoi (Vietnam)', zone: 'Asia/Bangkok', cur: 'VND', symbol: '₫' }, // Bangkok/Hanoi same zone
+            'VN': { name: 'Hanoi (Vietnam)', zone: 'Asia/Bangkok', cur: 'VND', symbol: '₫' },
             'TH': { name: 'Bangkok (Thai)', zone: 'Asia/Bangkok', cur: 'THB', symbol: '฿' }
         };
         
@@ -402,8 +428,7 @@
             catSel.innerHTML = '';
             CATEGORIES.forEach(c => catSel.innerHTML += `<option value="${c}">${c}</option>`);
 
-            // Load default rate
-            changeDestination(false); // false = don't save yet, just init
+            changeDestination(false);
             
             updateUI();
             startClock();
@@ -411,6 +436,15 @@
             
             if(db) openTripManager();
         };
+
+        // --- CORE FIX: LOCAL DATE PARSING ---
+        // Converts "YYYY-MM-DD" directly to Date object without UTC shift
+        function parseLocalDate(str) {
+            if(!str) return new Date();
+            const parts = str.split('-'); // [2025, 12, 20]
+            // Month is 0-indexed in JS Date (0=Jan, 11=Dec)
+            return new Date(parts[0], parts[1] - 1, parts[2]);
+        }
 
         // --- CALC, CLOCK & API ---
         function startClock() {
@@ -434,7 +468,6 @@
         async function fetchRate(currency) {
             if(currency === 'KRW') return 1;
             try {
-                // Free API: open.er-api.com
                 const res = await fetch(`https://open.er-api.com/v6/latest/${currency}`);
                 const json = await res.json();
                 if(json && json.rates && json.rates.KRW) {
@@ -448,13 +481,10 @@
             const code = document.getElementById('dest-select').value;
             const dest = DESTINATIONS[code] || DESTINATIONS['custom'];
             
-            data.destCode = code; // Update data model
-            
-            // Update UI Symbols
+            data.destCode = code;
             document.getElementById('cur-symbol').innerText = dest.symbol;
             document.getElementById('lbl-for').innerText = dest.cur;
             
-            // Auto fetch rate if not custom (or even if custom, if we implemented custom cur)
             if(code !== 'custom') {
                 const rate = await fetchRate(dest.cur);
                 if(rate) {
@@ -519,7 +549,7 @@
                 if (doc.exists) {
                     data = { ...data, ...doc.data() };
                     if(!data.limits) data.limits = {};
-                    if(!data.destCode) data.destCode = 'US_WA'; // Default legacy
+                    if(!data.destCode) data.destCode = 'US_WA';
                     CATEGORIES.forEach(c => { if(data.limits[c]===undefined) data.limits[c]=0; });
                     updateUI();
                 }
@@ -530,7 +560,7 @@
             event.stopPropagation();
             if(confirm("Are you sure you want to permanently delete this trip?")) {
                 db.collection("trips").doc(id).delete().then(() => {
-                    loadTripList(); // Refresh List
+                    loadTripList();
                     if(currentTripId === id) {
                         data = { tripName: "New Trip", totalBudget: 2000000, limits: {}, items: [], expenses: [], destCode: 'US_WA' };
                         currentTripId = null;
@@ -546,7 +576,7 @@
             if(db && currentTripId) { 
                 data.tripName = document.getElementById('current-trip-name').innerText; 
                 db.collection("trips").doc(currentTripId).set(data).then(() => {
-                    loadTripList(); // Refresh list to update name there too
+                    loadTripList();
                 });
             } 
         }
@@ -565,10 +595,11 @@
         function resetData() { if(confirm("Clear Data?")) { data.items=[]; data.expenses=[]; save(); updateUI(); } }
 
         function updateUI() { 
-            // Update Destination Select based on loaded data
             document.getElementById('dest-select').value = data.destCode || 'US_WA';
-            changeDestination(false); // Update visuals without saving again
-
+            // Force UI Name Update
+            if(data.tripName) document.getElementById('current-trip-name').innerText = data.tripName;
+            
+            changeDestination(false);
             renderJourney(); renderEditList(); renderSmartBudget(); renderSummary(); 
         }
 
@@ -582,9 +613,12 @@
             const c=document.getElementById('timeline-feed');c.innerHTML='';
             if(!data.items.length){document.getElementById('journey-empty').classList.remove('hidden');return;}
             document.getElementById('journey-empty').classList.add('hidden');
-            const dates=new Set();data.items.forEach(i=>{dates.add(i.startDate);if(i.endDate){let cur=new Date(i.startDate),end=new Date(i.endDate);while(cur<=end){dates.add(cur.toISOString().split('T')[0]);cur.setDate(cur.getDate()+1)}}});
+            const dates=new Set();data.items.forEach(i=>{dates.add(i.startDate);if(i.endDate){let cur=parseLocalDate(i.startDate),end=parseLocalDate(i.endDate);while(cur<=end){dates.add(cur.toISOString().split('T')[0]);cur.setDate(cur.getDate()+1)}}});
             Array.from(dates).sort().forEach(d=>{
-                const day=new Date(d).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+                // FIX: Use parseLocalDate instead of new Date()
+                const dateObj = parseLocalDate(d);
+                const day=dateObj.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+                
                 const card=document.createElement('div');card.className="relative pl-8";
                 card.id = `journey-date-${d}`;
                 card.innerHTML=`<div class="absolute left-[15px] top-1 w-3 h-3 bg-gray-800 rounded-full border-2 border-gray-50 z-10"></div><div class="absolute left-[20px] top-4 bottom-[-48px] w-0.5 bg-gray-200"></div><h3 class="text-xl font-black text-gray-800 mb-4">${day}</h3>`;
@@ -719,7 +753,12 @@
             document.getElementById('sum-dates').innerText = dates.length ? `${dates[0]} ~ ${dates[dates.length-1]}` : 'Set dates';
             document.getElementById('sum-title').innerText = data.tripName || "My Trip";
             if(dates.length) {
-                const start = new Date(dates[0]); const today = new Date();
+                // FIX: Use parseLocalDate instead of new Date() for D-Day calc
+                const start = parseLocalDate(dates[0]); 
+                const today = new Date();
+                // Set today to midnight to compare just dates
+                today.setHours(0,0,0,0);
+                
                 const diff = Math.ceil((start - today) / (1000*60*60*24));
                 document.getElementById('sum-dday').innerText = diff > 0 ? `D-${diff}` : (diff===0 ? 'D-Day' : `Day ${Math.abs(diff)+1}`);
             }
@@ -747,7 +786,8 @@
 
             sortedDates.forEach((date, idx) => {
                 const dayItems = grouped[date];
-                const dateObj = new Date(date);
+                // FIX: Use parseLocalDate instead of new Date()
+                const dateObj = parseLocalDate(date);
                 const dayStr = dateObj.toLocaleDateString('en-US', {month:'short', day:'numeric'});
                 const weekday = dateObj.toLocaleDateString('en-US', {weekday:'short'});
                 
